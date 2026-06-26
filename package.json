@@ -1,12 +1,14 @@
 {
   "name": "diabit-app",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "private": true,
   "scripts": {
     "dev": "next dev -p 3030",
     "build": "next build",
     "start": "next start -p 3030",
-    "lint": "eslint"
+    "lint": "eslint",
+    "bump": "node scripts/bump-version.js",
+    "prepare": "node -e \"const fs=require('fs'); if(fs.existsSync('.git')){fs.writeFileSync('.git/hooks/pre-commit', '#!/bin/sh\\nnode scripts/bump-version.js\\ngit add package.json\\n', {mode: 0o755}); fs.writeFileSync('.git/hooks/commit-msg', '#!/bin/sh\\nnode scripts/format-commit-msg.js \\\"\\$1\\\"\\n', {mode: 0o755}); console.log('Git hooks installed.');}\""
   },
   "dependencies": {
     "better-sqlite3": "^12.11.1",

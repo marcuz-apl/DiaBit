@@ -245,6 +245,7 @@ export default function Home() {
           onSelectNode={setActiveNode} 
           refreshTrigger={refreshTrigger}
           isAdmin={currentUser?.role === 'admin'}
+          onRefresh={() => setRefreshTrigger(prev => prev + 1)}
         />
 
         {/* Center Workspace (60%) */}

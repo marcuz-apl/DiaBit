@@ -3,7 +3,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Globe, MapPin, Layers, Folder, Disc, FileText, Activity, 
-  ChevronRight, ChevronDown, Plus, Trash2, Menu, ChevronLeft 
+  ChevronRight, ChevronDown, Plus, Trash2, Menu, ChevronLeft,
+  AlertTriangle
 } from 'lucide-react';
 
 // Isolated inline form component so typing does not trigger parent LeftSidebar re-renders
@@ -51,11 +52,67 @@ function InlineAddForm({ placeholder, onAdd, onCancel }) {
   );
 }
 
+// Isolated Rename Dialog component to prevent parent re-renders while typing
+function RenameDialog({ oldName, nodeType, onRename, onCancel }) {
+  const [newName, setNewName] = useState(oldName || '');
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      onRename(newName);
+    } else if (e.key === 'Escape') {
+      onCancel();
+    }
+  };
+
+  return (
+    <div 
+      className="fixed inset-0 bg-slate-900/50 dark:bg-slate-950/65 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200"
+      onClick={onCancel}
+    >
+      <div 
+        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl max-w-sm w-full overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="p-5 flex flex-col">
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-3">
+            Rename {nodeType === 'trajectory' ? 'Plan' : nodeType === 'survey' ? 'Actual Survey' : nodeType.charAt(0).toUpperCase() + nodeType.slice(1)}
+          </h3>
+          <input
+            type="text"
+            autoFocus
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            onKeyDown={handleKeyDown}
+            className="w-full text-xs py-1.5 px-3 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 rounded-lg outline-none text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all duration-200"
+            placeholder="Enter new name..."
+          />
+        </div>
+        <div className="bg-slate-50 dark:bg-slate-900/60 px-5 py-3.5 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-2">
+          <button
+            onClick={onCancel}
+            className="px-3.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-xs font-medium text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 transition cursor-pointer"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => onRename(newName)}
+            disabled={!newName.trim() || newName.trim() === oldName}
+            className="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-medium transition flex items-center gap-1 shadow-sm shadow-blue-500/20 cursor-pointer"
+          >
+            Save Changes
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function LeftSidebar({
   activeNodeId,
   onSelectNode,
   refreshTrigger,
-  isAdmin = false
+  isAdmin = false,
+  onRefresh
 }) {
   const [nodes, setNodes] = useState([]);
   const [expandedNodes, setExpandedNodes] = useState({});
@@ -67,6 +124,8 @@ export default function LeftSidebar({
   const isResizingRef = useRef(false);
   const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0, node: null });
   const [activeAddForm, setActiveAddForm] = useState(null); // { key, parentId, type }
+  const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, nodeId: null, nodeName: '', nodeType: '' });
+  const [renameDialog, setRenameDialog] = useState({ isOpen: false, nodeId: null, oldName: '', nodeType: '' });
 
   const handleToggleAddForm = (key, parentId, type) => {
     setActiveAddForm(prev => (prev && prev.key === key) ? null : { key, parentId, type });
@@ -127,6 +186,7 @@ export default function LeftSidebar({
       ));
 
       fetchNodes();
+      if (onRefresh) onRefresh();
     } catch (err) {
       alert("Error setting definitive: " + err.message);
     }
@@ -308,6 +368,7 @@ export default function LeftSidebar({
           }));
         }
         fetchNodes();
+        if (onRefresh) onRefresh();
         if (addedNode.type === 'trajectory' || addedNode.type === 'survey') {
           onSelectNode(addedNode);
         }
@@ -317,22 +378,44 @@ export default function LeftSidebar({
     }
   };
 
-  const handleDeleteNode = async (id, e) => {
-    e.stopPropagation();
-    if (!confirm("Are you sure you want to delete this node and all its contents? This action is irreversible.")) return;
-    
+  const handleDeleteNode = async (id) => {
     try {
       const res = await fetch(`/api/nodes/${id}`, {
         method: 'DELETE'
       });
       if (res.ok) {
         fetchNodes();
+        if (onRefresh) onRefresh();
         if (activeNodeId === id) {
           onSelectNode(null);
         }
       }
     } catch (e) {
       alert("Failed to delete node: " + e.message);
+    }
+  };
+
+  const handleRenameNode = async (id, newName) => {
+    if (!newName || !newName.trim()) return;
+    try {
+      const res = await fetch(`/api/nodes/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newName.trim() })
+      });
+      if (res.ok) {
+        fetchNodes();
+        if (onRefresh) onRefresh();
+        if (activeNodeId === id) {
+          const updated = await res.json();
+          onSelectNode(updated);
+        }
+      } else {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to rename node");
+      }
+    } catch (e) {
+      alert("Failed to rename node: " + e.message);
     }
   };
 
@@ -400,7 +483,7 @@ export default function LeftSidebar({
             }
           }}
           onContextMenu={(e) => {
-            if (node.type === 'trajectory' || node.type === 'survey') {
+            if (node.type !== 'plans_folder' && node.type !== 'surveys_folder') {
               e.preventDefault();
               setContextMenu({
                 visible: true,
@@ -446,7 +529,15 @@ export default function LeftSidebar({
             )}
             {node.type !== 'plans_folder' && node.type !== 'surveys_folder' && (isAdmin || node.type === 'trajectory' || node.type === 'survey' || node.type === 'well' || node.type === 'slot') && (
               <button
-                onClick={(e) => handleDeleteNode(node.id, e)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDeleteConfirm({
+                    isOpen: true,
+                    nodeId: node.id,
+                    nodeName: node.name,
+                    nodeType: node.type
+                  });
+                }}
                 title="Delete"
                 className="p-0.5 rounded text-slate-400 hover:text-red-500 hover:bg-slate-200 dark:hover:bg-slate-700 transition"
               >
@@ -558,19 +649,96 @@ export default function LeftSidebar({
       )}
 
       {/* Context Menu */}
-      {contextMenu.visible && (
+      {contextMenu.visible && contextMenu.node && (
         <div 
-          className="fixed bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg shadow-xl py-1 z-50 text-xs w-44 text-slate-700 dark:text-slate-200"
+          className="fixed bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm border border-slate-300 dark:border-slate-700 rounded-lg shadow-2xl py-1.5 z-50 text-xs w-48 text-slate-700 dark:text-slate-200 animate-in fade-in slide-in-from-top-1 duration-100 ring-1 ring-black/5 dark:ring-black/40"
           style={{ top: contextMenu.y, left: contextMenu.x }}
         >
+          {(contextMenu.node.type === 'trajectory' || contextMenu.node.type === 'survey') && !isNodeDefinitive(contextMenu.node) && (
+            <button
+              onClick={() => {
+                handleSetDefinitive(contextMenu.node);
+                setContextMenu(prev => ({ ...prev, visible: false }));
+              }}
+              className="w-full text-left px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-700/60 hover:text-blue-600 dark:hover:text-blue-400 transition flex items-center gap-2 font-medium cursor-pointer"
+            >
+              <span className="text-amber-500 font-bold text-sm">★</span> Set as Definitive
+            </button>
+          )}
           <button
             onClick={() => {
-              handleSetDefinitive(contextMenu.node);
+              setRenameDialog({
+                isOpen: true,
+                nodeId: contextMenu.node.id,
+                oldName: contextMenu.node.name,
+                nodeType: contextMenu.node.type
+              });
+              setContextMenu(prev => ({ ...prev, visible: false }));
             }}
-            className="w-full text-left px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-600 dark:hover:text-blue-400 transition flex items-center gap-2 font-medium"
+            className="w-full text-left px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-700/60 hover:text-blue-600 dark:hover:text-blue-400 transition flex items-center gap-2 font-medium cursor-pointer"
           >
-            <span className="text-amber-500 font-bold text-sm">★</span> Set as Definitive
+            <span className="text-blue-500 text-xs font-bold">✎</span> Rename Node
           </button>
+        </div>
+      )}
+
+      {/* Rename Dialog Modal */}
+      {renameDialog.isOpen && (
+        <RenameDialog
+          oldName={renameDialog.oldName}
+          nodeType={renameDialog.nodeType}
+          onRename={async (newName) => {
+            const id = renameDialog.nodeId;
+            setRenameDialog({ isOpen: false, nodeId: null, oldName: '', nodeType: '' });
+            await handleRenameNode(id, newName);
+          }}
+          onCancel={() => setRenameDialog({ isOpen: false, nodeId: null, oldName: '', nodeType: '' })}
+        />
+      )}
+
+      {/* Client-Side Delete Confirmation Modal */}
+      {deleteConfirm.isOpen && (
+        <div 
+          className="fixed inset-0 bg-slate-900/50 dark:bg-slate-950/65 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200"
+          onClick={(e) => {
+            e.stopPropagation();
+            setDeleteConfirm({ isOpen: false, nodeId: null, nodeName: '', nodeType: '' });
+          }}
+        >
+          <div 
+            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl max-w-sm w-full overflow-hidden animate-in fade-in zoom-in duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-5 flex flex-col items-center text-center">
+              <div className="w-12 h-12 bg-red-50 dark:bg-red-950/30 rounded-full flex items-center justify-center text-red-650 dark:text-red-400 mb-4 shadow-inner">
+                <AlertTriangle className="h-6 w-6" />
+              </div>
+              <h3 className="text-base font-semibold text-slate-900 dark:text-white">
+                Delete {getFriendlyTypeName(deleteConfirm.nodeType)}?
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 leading-relaxed font-normal">
+                Are you sure you want to delete <span className="font-semibold text-slate-800 dark:text-slate-200">"{deleteConfirm.nodeName}"</span> and all its contents? This action is irreversible.
+              </p>
+            </div>
+            <div className="bg-slate-50 dark:bg-slate-900/60 px-5 py-3.5 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-2">
+              <button
+                onClick={() => setDeleteConfirm({ isOpen: false, nodeId: null, nodeName: '', nodeType: '' })}
+                className="px-3.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-xs font-medium text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  const id = deleteConfirm.nodeId;
+                  setDeleteConfirm({ isOpen: false, nodeId: null, nodeName: '', nodeType: '' });
+                  await handleDeleteNode(id);
+                }}
+                className="px-3.5 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-medium transition flex items-center gap-1 shadow-sm shadow-red-500/20 cursor-pointer"
+              >
+                <Trash2 className="h-3.5 w-3.5" /> Confirm Delete
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
