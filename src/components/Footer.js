@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Globe, Twitter, Linkedin, ShieldAlert } from 'lucide-react';
+import Link from 'next/link';
+import { Globe, Twitter, Linkedin, ShieldAlert, HelpCircle } from 'lucide-react';
 
 export default function Footer() {
   const [showDisclaimer, setShowDisclaimer] = useState(false);
@@ -10,15 +11,23 @@ export default function Footer() {
     <>
       <footer className="w-full border-t border-slate-200 bg-white py-3 px-6 dark:border-slate-800 dark:bg-slate-950 transition">
         <div className="flex flex-col md:flex-row items-center justify-between gap-3 text-xs">
-          {/* Left Corner: Disclaimer */}
-          <div className="flex items-center gap-1 text-slate-500 dark:text-slate-400">
+          {/* Left Corner: Disclaimer & Contact */}
+          <div className="flex items-center gap-3 text-slate-500 dark:text-slate-400">
             <button
               onClick={() => setShowDisclaimer(true)}
-              className="flex items-center gap-1 hover:text-blue-500 dark:hover:text-blue-400 transition"
+              className="flex items-center gap-1 hover:text-blue-500 dark:hover:text-blue-400 transition cursor-pointer"
             >
               <ShieldAlert className="h-4 w-4 text-amber-500" />
               Disclaimer
             </button>
+            <span className="text-slate-200 dark:text-slate-800 font-light">|</span>
+            <Link
+              href="/contact"
+              className="flex items-center gap-1 hover:text-blue-500 dark:hover:text-blue-400 transition cursor-pointer"
+            >
+              <HelpCircle className="h-4 w-4 text-blue-500" />
+              Contact
+            </Link>
           </div>
 
           {/* Center: Copyright */}

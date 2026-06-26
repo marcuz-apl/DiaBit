@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, UserPlus, Users, Trash2, ShieldAlert, Database, Check } from 'lucide-react';
+import { ArrowLeft, UserPlus, Users, Trash2, ShieldAlert, Database, Check, Mail } from 'lucide-react';
 
 export default function AdminPage() {
   const [isAdmin, setIsAdmin] = useState(false);
@@ -26,6 +26,9 @@ export default function AdminPage() {
   const [autoSaveInterval, setAutoSaveInterval] = useState(3);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [settingsMsg, setSettingsMsg] = useState({ text: '', isError: false });
+
+  // Messages list state
+  const [messages, setMessages] = useState([]);
 
   // Load user and check role
   useEffect(() => {
@@ -68,6 +71,13 @@ export default function AdminPage() {
         if (settingsRes.ok) {
           const sData = await settingsRes.json();
           setAutoSaveInterval(sData.auto_save_interval || 3);
+        }
+
+        // Fetch contact messages
+        const messagesRes = await fetch('/api/messages');
+        if (messagesRes.ok) {
+          const mData = await messagesRes.json();
+          setMessages(mData);
         }
       } catch (e) {
         console.error("Failed to load admin data", e);
@@ -173,6 +183,26 @@ export default function AdminPage() {
       setSettingsMsg({ text: err.message, isError: true });
     } finally {
       setIsSavingSettings(false);
+    }
+  };
+
+  const handleDeleteMessage = async (id) => {
+    if (!confirm("Are you sure you want to delete this message?")) return;
+
+    try {
+      const res = await fetch(`/api/messages/${id}`, {
+        method: 'DELETE'
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to delete message");
+      }
+
+      setMessages(messages.filter(m => m.id !== id));
+      alert("Message deleted successfully.");
+    } catch (err) {
+      alert(err.message);
     }
   };
 
@@ -481,7 +511,61 @@ export default function AdminPage() {
               </button>
             </form>
           </div>
+        </div>
 
+        {/* Row 4: Received Support & Contact Messages */}
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/60">
+          <h2 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-3 flex items-center gap-1.5">
+            <Mail className="h-4.5 w-4.5 text-blue-500" />
+            Received Contact Messages
+          </h2>
+
+          {messages.length === 0 ? (
+            <div className="py-8 text-center text-xs text-slate-400 dark:text-slate-550">
+              No messages have been recorded yet.
+            </div>
+          ) : (
+            <div className="overflow-x-auto max-h-[350px]">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-450 dark:text-slate-550 font-bold bg-slate-50/50 dark:bg-slate-900/50">
+                    <th className="py-2 px-3">Date</th>
+                    <th className="py-2 px-3">Name</th>
+                    <th className="py-2 px-3">Email</th>
+                    <th className="py-2 px-3">Subject</th>
+                    <th className="py-2 px-3">Message</th>
+                    <th className="py-2 px-3 text-center">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                  {messages.map(m => (
+                    <tr key={m.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/20 align-top">
+                      <td className="py-2.5 px-3 text-slate-400 font-mono whitespace-nowrap">
+                        {new Date(m.created_at).toLocaleDateString()}
+                      </td>
+                      <td className="py-2.5 px-3 font-semibold whitespace-nowrap">{m.name}</td>
+                      <td className="py-2.5 px-3 whitespace-nowrap">{m.email}</td>
+                      <td className="py-2.5 px-3 font-medium text-blue-600 dark:text-blue-400 whitespace-nowrap">
+                        {m.subject}
+                      </td>
+                      <td className="py-2.5 px-3 max-w-xs break-words text-slate-600 dark:text-slate-350">
+                        {m.message}
+                      </td>
+                      <td className="py-2.5 px-3 text-center">
+                        <button
+                          onClick={() => handleDeleteMessage(m.id)}
+                          className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 p-1.5 rounded transition cursor-pointer"
+                          title="Delete Message"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
 
       </main>

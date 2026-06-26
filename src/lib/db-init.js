@@ -67,6 +67,18 @@ export function initDb() {
     db.prepare("INSERT INTO settings (key, value) VALUES ('auto_save_interval', '3')").run();
   }
 
+  // 5. Create Messages table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS messages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      email TEXT NOT NULL,
+      subject TEXT NOT NULL,
+      message TEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
   console.log("Tables verified.");
 
   // Check if users table is empty, and seed if so
