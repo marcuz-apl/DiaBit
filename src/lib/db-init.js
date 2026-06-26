@@ -63,6 +63,87 @@ export function initDb(db) {
     // Column already exists, ignore
   }
 
+  // 4b. CRS Registry table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS crs_registry (
+      id               INTEGER PRIMARY KEY AUTOINCREMENT,
+      epsg_code        INTEGER UNIQUE,
+      name             TEXT NOT NULL,
+      projection       TEXT NOT NULL,
+      zone             INTEGER,
+      hemisphere       TEXT,
+      datum            TEXT DEFAULT 'WGS84',
+      central_meridian REAL,
+      false_easting    REAL DEFAULT 500000,
+      false_northing   REAL DEFAULT 0,
+      scale_factor     REAL DEFAULT 0.9996,
+      active           INTEGER DEFAULT 1
+    );
+  `);
+
+  const crsCount = db.prepare("SELECT count(*) as count FROM crs_registry").get().count;
+  if (crsCount === 0) {
+    try {
+      const crsPath = path.join(process.cwd(), 'data', 'g-m-fields', 'crs_registry.json');
+      if (fs.existsSync(crsPath)) {
+        const crsList = JSON.parse(fs.readFileSync(crsPath, 'utf8'));
+        const insertCrs = db.prepare(`
+          INSERT OR IGNORE INTO crs_registry
+            (epsg_code, name, projection, zone, hemisphere, datum, central_meridian, false_easting, false_northing, scale_factor, active)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+        `);
+        const insertManyCrs = db.transaction((rows) => {
+          for (const c of rows) {
+            insertCrs.run(c.epsg_code || null, c.name, c.projection, c.zone || null, c.hemisphere || null,
+              c.datum || 'WGS84', c.central_meridian || null, c.false_easting ?? 500000,
+              c.false_northing ?? 0, c.scale_factor ?? 0.9996);
+          }
+        });
+        insertManyCrs(crsList);
+        console.log(`CRS registry seeded: ${crsList.length} entries.`);
+      }
+    } catch (err) {
+      console.error("Failed to seed CRS registry", err);
+    }
+  }
+
+  // 4c. WMM Coefficients table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS wmm_coefficients (
+      id      INTEGER PRIMARY KEY AUTOINCREMENT,
+      epoch   REAL    NOT NULL,
+      n       INTEGER NOT NULL,
+      m       INTEGER NOT NULL,
+      g       REAL    NOT NULL,
+      h       REAL    NOT NULL,
+      g_dot   REAL    NOT NULL,
+      h_dot   REAL    NOT NULL
+    );
+  `);
+
+  const wmmCount = db.prepare("SELECT count(*) as count FROM wmm_coefficients").get().count;
+  if (wmmCount === 0) {
+    try {
+      const wmmPath = path.join(process.cwd(), 'data', 'g-m-fields', 'wmm2025.json');
+      if (fs.existsSync(wmmPath)) {
+        const wmmCoeffs = JSON.parse(fs.readFileSync(wmmPath, 'utf8'));
+        const insertWmm = db.prepare(`
+          INSERT INTO wmm_coefficients (epoch, n, m, g, h, g_dot, h_dot)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+        `);
+        const insertManyWmm = db.transaction((rows) => {
+          for (const c of rows) {
+            insertWmm.run(c.epoch, c.n, c.m, c.g, c.h, c.g_dot, c.h_dot);
+          }
+        });
+        insertManyWmm(wmmCoeffs);
+        console.log(`WMM2025 coefficients seeded: ${wmmCoeffs.length} entries.`);
+      }
+    } catch (err) {
+      console.error("Failed to seed WMM coefficients", err);
+    }
+  }
+
   // 4. Create Settings table
   db.exec(`
     CREATE TABLE IF NOT EXISTS settings (

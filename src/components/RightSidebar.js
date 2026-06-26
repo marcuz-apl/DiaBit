@@ -39,10 +39,17 @@ export default function RightSidebar({
   const [gravityModels, setGravityModels] = useState([]);
   const [magneticModels, setMagneticModels] = useState([]);
 
+  // CRS registry state
+  const [crsOptions, setCrsOptions] = useState([]);
+  const [crsSearch, setCrsSearch] = useState('');
+  const [selectedCrsObj, setSelectedCrsObj] = useState(null);
+  const [isFetchingGeo, setIsFetchingGeo] = useState(false);
+
   // States for save confirmation messages in client UI
   const [saveMessage, setSaveMessage] = useState(null);
   const [saveError, setSaveError] = useState(false);
 
+  // Fetch reference field models
   useEffect(() => {
     const fetchModels = async () => {
       try {
@@ -53,11 +60,52 @@ export default function RightSidebar({
           setMagneticModels(data.magnetic || []);
         }
       } catch (err) {
-        console.error("Failed to fetch reference models", err);
+        console.error('Failed to fetch reference models', err);
       }
     };
     fetchModels();
   }, []);
+
+  // Fetch CRS options (filtered by search text)
+  useEffect(() => {
+    const fetchCrs = async () => {
+      try {
+        const q = crsSearch.trim();
+        const res = await fetch(`/api/crs${q ? '?q=' + encodeURIComponent(q) : ''}`);
+        if (res.ok) setCrsOptions(await res.json());
+      } catch (_) {}
+    };
+    fetchCrs();
+  }, [crsSearch]);
+
+  // Auto UTM → Lat/Lon when easting, northing, or CRS selection changes
+  useEffect(() => {
+    if (!selectedCrsObj || selectedCrsObj.projection !== 'utm') return;
+    const e = parseFloat(easting);
+    const n = parseFloat(northing);
+    if (isNaN(e) || isNaN(n) || e === 0 || n === 0) return;
+
+    let cancelled = false;
+    const convert = async () => {
+      try {
+        setIsFetchingGeo(true);
+        const url = `/api/geo?type=utm&easting=${e}&northing=${n}&zone=${selectedCrsObj.zone}&hemisphere=${selectedCrsObj.hemisphere || 'N'}`;
+        const res = await fetch(url);
+        if (!res.ok || cancelled) return;
+        const data = await res.json();
+        if (data.lat !== undefined) {
+          setLatitude(parseFloat(data.lat.toFixed(6)));
+          setLongitude(parseFloat(data.lon.toFixed(6)));
+          setGridConvergence(parseFloat(data.convergence.toFixed(4)));
+          setScaleFactor(parseFloat(data.scaleFactor.toFixed(6)));
+        }
+      } catch (_) {}
+      finally { if (!cancelled) setIsFetchingGeo(false); }
+    };
+
+    const timer = setTimeout(convert, 600); // debounce 600ms
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [easting, northing, selectedCrsObj]);
 
   // Tie-in settings (specific to trajectory metadata or defaults)
   const [tieInMd, setTieInMd] = useState(0);
@@ -402,14 +450,46 @@ export default function RightSidebar({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="block text-[10px] text-slate-400">Coordinate Reference System (CRS)</label>
+                  <div className="flex items-center justify-between">
+                    <label className="block text-[10px] text-slate-400">Coordinate Reference System (CRS)</label>
+                    {selectedCrsObj && (
+                      <span className="text-[9px] font-mono text-blue-500 dark:text-blue-400">
+                        EPSG:{selectedCrsObj.epsg_code}
+                      </span>
+                    )}
+                  </div>
                   <input
                     type="text"
-                    value={crs}
-                    onChange={(e) => setCrs(e.target.value)}
-                    placeholder="e.g. UTM Zone 14N"
-                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-2.5 py-1.5 focus:border-blue-500 outline-none text-slate-850 dark:text-slate-100"
+                    value={crsSearch || crs}
+                    onChange={(e) => {
+                      setCrsSearch(e.target.value);
+                      setCrs(e.target.value);
+                      setSelectedCrsObj(null);
+                    }}
+                    placeholder="Search: \"14N\", \"32614\", \"UTM Zone\""
+                    list="crs-datalist"
+                    autoComplete="off"
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-2.5 py-1.5 focus:border-blue-500 outline-none text-slate-850 dark:text-slate-100 text-xs"
                   />
+                  <datalist id="crs-datalist">
+                    {crsOptions.map(c => (
+                      <option key={c.id} value={c.name}>
+                        EPSG:{c.epsg_code} — {c.name}
+                      </option>
+                    ))}
+                  </datalist>
+                  {/* Hidden: sync selectedCrsObj when user picks from datalist */}
+                  {crsOptions.length > 0 && (() => {
+                    const match = crsOptions.find(c => c.name === (crsSearch || crs));
+                    if (match && (!selectedCrsObj || selectedCrsObj.id !== match.id)) {
+                      setTimeout(() => {
+                        setSelectedCrsObj(match);
+                        setCrs(match.name);
+                        setCrsSearch('');
+                      }, 0);
+                    }
+                    return null;
+                  })()}
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
@@ -435,7 +515,13 @@ export default function RightSidebar({
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="block text-[10px] text-slate-400">Latitude</label>
+                    <div className="flex items-center justify-between mb-0.5">
+                      <label className="text-[10px] text-slate-400">Latitude</label>
+                      {isFetchingGeo && <span className="text-[9px] text-blue-400 animate-pulse">computing…</span>}
+                      {!isFetchingGeo && selectedCrsObj?.projection === 'utm' && latitude !== 0 && (
+                        <span className="text-[9px] text-amber-500">↻ auto</span>
+                      )}
+                    </div>
                     <input
                       type="number"
                       step="0.000001"
@@ -445,7 +531,12 @@ export default function RightSidebar({
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] text-slate-400">Longitude</label>
+                    <div className="flex items-center justify-between mb-0.5">
+                      <label className="text-[10px] text-slate-400">Longitude</label>
+                      {!isFetchingGeo && selectedCrsObj?.projection === 'utm' && longitude !== 0 && (
+                        <span className="text-[9px] text-amber-500">↻ auto</span>
+                      )}
+                    </div>
                     <input
                       type="number"
                       step="0.000001"
