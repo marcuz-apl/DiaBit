@@ -1,0 +1,377 @@
+'use client';
+
+import React, { useState, useEffect, useRef } from 'react';
+import { 
+  Globe, MapPin, Layers, Folder, Disc, FileText, Activity, 
+  ChevronRight, ChevronDown, Plus, Trash2, Menu, ChevronLeft 
+} from 'lucide-react';
+
+export default function LeftSidebar({
+  activeNodeId,
+  onSelectNode,
+  refreshTrigger,
+  isAdmin = false
+}) {
+  const [nodes, setNodes] = useState([]);
+  const [expandedNodes, setExpandedNodes] = useState({});
+  const [isOpen, setIsOpen] = useState(true);
+  const [showAddForm, setShowAddForm] = useState(null); // Node ID being appended to
+  const [newNodeName, setNewNodeName] = useState('');
+  const [newNodeType, setNewNodeType] = useState('');
+  const idleTimerRef = useRef(null);
+
+  // Load nodes from API
+  const fetchNodes = async () => {
+    try {
+      const res = await fetch('/api/nodes');
+      if (res.ok) {
+        const data = await res.json();
+        setNodes(data);
+
+        // Auto-expand nodes leading to the active node if any
+        if (activeNodeId) {
+          const parents = getParentChain(data, activeNodeId);
+          setExpandedNodes(prev => ({
+            ...prev,
+            ...parents.reduce((acc, id) => ({ ...acc, [id]: true }), {})
+          }));
+        }
+      }
+    } catch (e) {
+      console.error("Failed to load nodes", e);
+    }
+  };
+
+  useEffect(() => {
+    fetchNodes();
+  }, [refreshTrigger, activeNodeId]);
+
+  // Autohide idle logic: 30 seconds
+  useEffect(() => {
+    const resetIdleTimer = () => {
+      // If sidebar is closed, don't trigger anything. If open, reset timer.
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+      
+      idleTimerRef.current = setTimeout(() => {
+        setIsOpen(false);
+      }, 30000); // 30 seconds
+    };
+
+    // Listen to mouse movement and clicks
+    window.addEventListener('mousemove', resetIdleTimer);
+    window.addEventListener('mousedown', resetIdleTimer);
+    window.addEventListener('keydown', resetIdleTimer);
+    
+    resetIdleTimer();
+
+    return () => {
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+      window.removeEventListener('mousemove', resetIdleTimer);
+      window.removeEventListener('mousedown', resetIdleTimer);
+      window.removeEventListener('keydown', resetIdleTimer);
+    };
+  }, []);
+
+  // Helper to trace parentage
+  const getParentChain = (flatNodes, targetId) => {
+    const chain = [];
+    let current = flatNodes.find(n => n.id === targetId);
+    while (current && current.parent_id) {
+      chain.push(current.parent_id);
+      current = flatNodes.find(n => n.id === current.parent_id);
+    }
+    return chain;
+  };
+
+  // Build tree from flat array
+  const buildTree = (parentId = null) => {
+    return nodes
+      .filter(n => n.parent_id === parentId)
+      .map(n => ({
+        ...n,
+        children: buildTree(n.id)
+      }));
+  };
+
+  const toggleExpand = (id) => {
+    setExpandedNodes(prev => ({
+      ...prev,
+      [id]: !prev[id]
+    }));
+  };
+
+  // CRUD API Calls
+  const handleAddNode = async (parentId, type) => {
+    if (!newNodeName.trim()) return;
+    try {
+      const res = await fetch('/api/nodes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          parent_id: parentId,
+          name: newNodeName,
+          type: type,
+          metadata: type === 'well' ? {
+            units: 'metric',
+            vs_direction: 0,
+            latitude: 0,
+            longitude: 0,
+            easting: 0,
+            northing: 0,
+            elevation: 0
+          } : {}
+        })
+      });
+
+      if (res.ok) {
+        const addedNode = await res.json();
+        // Expand the parent so the new node is visible
+        if (parentId) {
+          setExpandedNodes(prev => ({ ...prev, [parentId]: true }));
+        }
+        setNewNodeName('');
+        setShowAddForm(null);
+        fetchNodes();
+        if (addedNode.type === 'trajectory' || addedNode.type === 'survey') {
+          onSelectNode(addedNode);
+        }
+      }
+    } catch (e) {
+      alert("Failed to add node: " + e.message);
+    }
+  };
+
+  const handleDeleteNode = async (id, e) => {
+    e.stopPropagation();
+    if (!confirm("Are you sure you want to delete this node and all its contents? This action is irreversible.")) return;
+    
+    try {
+      const res = await fetch(`/api/nodes/${id}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        fetchNodes();
+        if (activeNodeId === id) {
+          onSelectNode(null);
+        }
+      }
+    } catch (e) {
+      alert("Failed to delete node: " + e.message);
+    }
+  };
+
+  const getNodeIcon = (type) => {
+    switch (type) {
+      case 'country': return <Globe className="h-4 w-4 text-sky-500 shrink-0" />;
+      case 'state': return <MapPin className="h-4 w-4 text-emerald-500 shrink-0" />;
+      case 'basin': return <Layers className="h-4 w-4 text-indigo-500 shrink-0" />;
+      case 'field': return <Folder className="h-4 w-4 text-amber-500 shrink-0" />;
+      case 'well': return <Disc className="h-4 w-4 text-red-500 shrink-0" />;
+      case 'slot': return <Activity className="h-4 w-4 text-purple-500 shrink-0" />;
+      case 'trajectory': return <FileText className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />;
+      case 'survey': return <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />;
+      default: return <FileText className="h-4 w-4 shrink-0" />;
+    }
+  };
+
+  const getChildTypeNeeded = (parentType) => {
+    switch (parentType) {
+      case 'country': return 'state';
+      case 'state': return 'basin';
+      case 'basin': return 'field';
+      case 'field': return 'well';
+      case 'well': return 'slot';
+      default: return 'trajectory'; // Slot gets Trajectory Plan or Deviation Survey
+    }
+  };
+
+  // Recursive renderer for tree nodes
+  const renderNode = (node) => {
+    const isExpanded = expandedNodes[node.id];
+    const isLeaf = node.type === 'trajectory' || node.type === 'survey';
+    const isActive = activeNodeId === node.id;
+    const hasChildren = node.children && node.children.length > 0;
+    const childType = getChildTypeNeeded(node.type);
+
+    return (
+      <div key={node.id} className="select-none text-sm pl-2">
+        {/* Row element */}
+        <div 
+          onClick={() => {
+            if (isLeaf) {
+              onSelectNode(node);
+            } else {
+              toggleExpand(node.id);
+            }
+          }}
+          className={`flex items-center justify-between group py-1 px-1.5 rounded-lg cursor-pointer transition ${
+            isActive 
+              ? 'bg-blue-600 text-white font-medium shadow-sm' 
+              : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
+          }`}
+        >
+          <div className="flex items-center gap-1.5 overflow-hidden">
+            {!isLeaf ? (
+              isExpanded ? <ChevronDown className="h-4 w-4 text-slate-400 shrink-0" /> : <ChevronRight className="h-4 w-4 text-slate-400 shrink-0" />
+            ) : (
+              <span className="w-4 h-4 shrink-0"></span> // indent leaf nodes
+            )}
+            {getNodeIcon(node.type)}
+            <span className="truncate text-xs">{node.name}</span>
+          </div>
+
+          {/* Action buttons on hover (Admin or node creation) */}
+          <div className="hidden group-hover:flex items-center gap-1 shrink-0">
+            {node.type !== 'trajectory' && node.type !== 'survey' && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowAddForm(showAddForm === node.id ? null : node.id);
+                  setNewNodeName('');
+                  setNewNodeType(childType);
+                }}
+                title={`Add ${childType}`}
+                className="p-0.5 rounded text-slate-400 hover:text-blue-500 hover:bg-slate-200 dark:hover:bg-slate-700 transition"
+              >
+                <Plus className="h-3 w-3" />
+              </button>
+            )}
+            {(isAdmin || node.type === 'trajectory' || node.type === 'survey' || node.type === 'well' || node.type === 'slot') && (
+              <button
+                onClick={(e) => handleDeleteNode(node.id, e)}
+                title="Delete"
+                className="p-0.5 rounded text-slate-400 hover:text-red-500 hover:bg-slate-200 dark:hover:bg-slate-700 transition"
+              >
+                <Trash2 className="h-3 w-3" />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Inline sub-node creation form */}
+        {showAddForm === node.id && (
+          <div className="mt-1 pl-6 pr-2 py-1 bg-slate-50 dark:bg-slate-900 rounded-lg flex flex-col gap-1 border border-slate-200 dark:border-slate-800">
+            {node.type === 'slot' ? (
+              <div className="flex gap-1 text-[10px]">
+                <button 
+                  onClick={() => setNewNodeType('trajectory')}
+                  className={`px-1.5 py-0.5 rounded ${newNodeType === 'trajectory' ? 'bg-blue-500 text-white' : 'bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300'}`}
+                >
+                  Plan
+                </button>
+                <button 
+                  onClick={() => setNewNodeType('survey')}
+                  className={`px-1.5 py-0.5 rounded ${newNodeType === 'survey' ? 'bg-blue-500 text-white' : 'bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300'}`}
+                >
+                  Actual
+                </button>
+              </div>
+            ) : null}
+            <div className="flex gap-1">
+              <input
+                type="text"
+                autoFocus
+                placeholder={`New ${newNodeType || childType}...`}
+                value={newNodeName}
+                onChange={(e) => setNewNodeName(e.target.value)}
+                className="flex-1 text-xs py-0.5 px-1.5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 rounded outline-none text-slate-800 dark:text-slate-100"
+              />
+              <button
+                onClick={() => handleAddNode(node.id, newNodeType || childType)}
+                className="bg-blue-600 text-white px-2 py-0.5 rounded text-[10px] hover:bg-blue-500 transition font-medium"
+              >
+                Add
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Render children recursively */}
+        {isExpanded && node.children && (
+          <div className="mt-0.5 border-l border-slate-200 dark:border-slate-800 ml-3.5 pl-0.5">
+            {node.children.map(child => renderNode(child))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const rootNodes = buildTree(null);
+
+  return (
+    <div 
+      className={`relative h-full border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/60 dark:backdrop-blur-md transition-all duration-300 z-30 flex flex-col ${
+        isOpen ? 'w-64' : 'w-4'
+      }`}
+    >
+      {/* Expand/Collapse Hover Trigger */}
+      {!isOpen && (
+        <div 
+          onMouseEnter={() => setIsOpen(true)}
+          className="absolute top-0 left-0 w-4 h-full cursor-pointer hover:bg-blue-500/10 transition flex items-center justify-center text-slate-400 hover:text-blue-500"
+        >
+          <Menu className="h-4 w-4" />
+        </div>
+      )}
+
+      {/* Actual Sidebar Content */}
+      <div className={`flex flex-col h-full overflow-hidden ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+        {/* Sidebar Header */}
+        <div className="flex items-center justify-between px-3 py-3 border-b border-slate-200 dark:border-slate-800">
+          <span className="font-semibold text-xs text-slate-500 dark:text-slate-400 tracking-wider uppercase">Project Hierarchy</span>
+          <button
+            onClick={() => setIsOpen(false)}
+            className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:text-slate-200 dark:hover:bg-slate-800 transition"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* Add Country Node Option (Tree Root) */}
+        <div className="p-2 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/50">
+          <span className="text-[10px] text-slate-400">Add top-level Country</span>
+          <button
+            onClick={() => {
+              setShowAddForm(showAddForm === 'root' ? null : 'root');
+              setNewNodeName('');
+              setNewNodeType('country');
+            }}
+            className="p-1 rounded text-slate-500 hover:text-blue-500 hover:bg-slate-200 dark:hover:bg-slate-700 transition"
+          >
+            <Plus className="h-3.5 w-3.5" />
+          </button>
+        </div>
+
+        {showAddForm === 'root' && (
+          <div className="m-2 p-2 bg-slate-50 dark:bg-slate-900 rounded border border-slate-200 dark:border-slate-800 flex gap-1">
+            <input
+              type="text"
+              autoFocus
+              placeholder="Country name..."
+              value={newNodeName}
+              onChange={(e) => setNewNodeName(e.target.value)}
+              className="flex-1 text-xs py-0.5 px-1.5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 rounded outline-none text-slate-800 dark:text-slate-100"
+            />
+            <button
+              onClick={() => handleAddNode(null, 'country')}
+              className="bg-blue-600 text-white px-2 py-0.5 rounded text-[10px] hover:bg-blue-500 transition font-medium"
+            >
+              Add
+            </button>
+          </div>
+        )}
+
+        {/* Hierarchy Tree Area */}
+        <div className="flex-1 overflow-y-auto px-1 py-3 space-y-1">
+          {rootNodes.length === 0 ? (
+            <div className="px-4 py-8 text-center text-xs text-slate-400 dark:text-slate-500">
+              No project data. Click "+" to create a Country.
+            </div>
+          ) : (
+            rootNodes.map(node => renderNode(node))
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

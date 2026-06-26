@@ -1,36 +1,69 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# DiaBit: Directional Drilling Survey Calculation Suite
 
-## Getting Started
+**DiaBit** is a premium, engineering-grade web application for calculating and visualizing directional drilling trajectories in the Oil & Gas industry. Designed to mimic standard systems such as Landmark COMPASS/EDT and Paradigm SysDril, it utilizes the mathematically rigorous **Minimum Curvature Method (MCM)** to calculate 3D survey coordinates from Measured Depth (MD), Inclination (Inc), and Azimuth (Az) logs.
 
-First, run the development server:
+---
 
+## Key Features
+
+1. **Precision MCM Calculations**: Instant, automatic calculations of TVD, Northing, Easting, Dogleg Severity (DLS), Vertical Section (VS), and Closure.
+2. **Dynamic Project Registry**: Tree-style navigation hierarchy organizing data from Country down to States, Basins, Fields, Wells, Slots, Trajectory Plans, and Deviation Surveys.
+3. **Interactive Excel Grid**: High-performance spreadsheet interface supporting inline edits, row insertions/appenditions/deletions, and automatic recalculations.
+4. **Planned vs. Real-Time Overlay Charts**: Dynamic 3D Trajectory, 2D Plan, and Vertical Section plots rendering planned trajectories alongside actual deviation surveys.
+5. **CSV Integration**: Seamless import and export of survey stations in CSV spreadsheets.
+6. **Admin Panel**: Complete user account administration and database node management.
+7. **Sleek Light/Dark Themes**: Glassmorphism dashboard layout with auto-hiding navigation tree when idle (30 seconds).
+
+---
+
+## Tech Stack
+
+- **Frontend Framework**: Next.js 14/15 (App Router), React 18/19
+- **Styles & Layout**: Tailwind CSS v4, Lucide React Icons
+- **Calculations Engine**: Pure JavaScript Minimum Curvature Math (`src/lib/mcm.js`)
+- **Data Visualization**: Dynamic Plotly.js (`react-plotly.js` + `plotly.js-dist-min`)
+- **Database**: SQLite3 via native Node client `better-sqlite3` (stored in `./data/diabit.db`)
+- **Containerization**: Docker & docker-compose
+
+---
+
+## Local Installation
+
+### Prerequisites
+- Node.js (v18 or higher)
+- npm or yarn
+
+### Setup Instructions
+
+1. **Clone the repository and install dependencies**:
+   ```bash
+   npm install
+   ```
+
+2. **Initialize and Seed the Database**:
+   ```bash
+   node src/lib/run-db-init.mjs
+   ```
+   *This creates the database directory `./data/`, builds the schema, and seeds default profiles and a sample Texas Permian Basin well registry.*
+
+3. **Start the Local Development Server**:
+   ```bash
+   npm run dev
+   ```
+   *Navigate to `http://localhost:3000` to interact with the application.*
+
+4. **Default Test Accounts**:
+   - **Administrator**: Username: `admin` | Password: `adminpassword` (or `admin123` depending on seeding)
+   - **Engineer**: Username: `engineer` | Password: `driller123`
+
+---
+
+## Containerized Deployment (Docker)
+
+To launch DiaBit in isolated containers:
+
+### Build and Run with Docker Compose
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+docker-compose up --build -d
 ```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The application will run on port `3000` (`http://localhost:3000`). Database data is persisted inside the container's `./data/` folder mapped to host storage.
