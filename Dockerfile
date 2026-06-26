@@ -21,7 +21,7 @@ FROM node:20-slim AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
-ENV PORT=3020
+ENV PORT=3030
 ENV HOSTNAME="0.0.0.0"
 
 # Copy build artifacts and dependencies from builder stage
@@ -30,7 +30,7 @@ COPY --from=builder /app ./
 # Create data directory for SQLite persistence
 RUN mkdir -p data
 
-EXPOSE 3020
+EXPOSE 3030
 
 # Run database seeder first, then start server
 CMD ["sh", "-c", "node src/lib/run-db-init.mjs && npm run start"]

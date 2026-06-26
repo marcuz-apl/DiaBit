@@ -50,7 +50,7 @@
    ```bash
    npm run dev
    ```
-   *Navigate to `http://localhost:3000` to interact with the application.*
+   *Navigate to `http://localhost:3030` to interact with the application.*
 
 4. **Default Test Accounts**:
    - **Administrator**: Username: `admin` | Password: `adminpassword` (or `admin123` depending on seeding)
@@ -66,4 +66,4 @@ To launch DiaBit in isolated containers:
 ```bash
 docker-compose up --build -d
 ```
-The application will run on port `3000` (`http://localhost:3000`). Database data is persisted inside the container's `./data/` folder mapped to host storage.
+The application will run on port `3030` (`http://localhost:3030`). Database data is persisted inside the container's `./data/` folder mapped to host storage.
