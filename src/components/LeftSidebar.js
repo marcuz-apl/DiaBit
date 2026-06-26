@@ -192,6 +192,47 @@ export default function LeftSidebar({
     }
   };
 
+  const isWellWorkingProject = (wellNode) => {
+    if (wellNode.type !== 'well') return false;
+    if (wellNode.metadata?.is_working_project === true || wellNode.metadata?.is_working_project === 'true') {
+      return true;
+    }
+    const hasAnyWorking = nodes.some(n => n.type === 'well' && (n.metadata?.is_working_project === true || n.metadata?.is_working_project === 'true'));
+    if (!hasAnyWorking) {
+      const firstWell = nodes.find(n => n.type === 'well');
+      return firstWell && firstWell.id === wellNode.id;
+    }
+    return false;
+  };
+
+  const handleSetWorkingProject = async (wellNode) => {
+    try {
+      const otherWells = nodes.filter(n => n.type === 'well' && n.id !== wellNode.id);
+      
+      // Update targeted well to working project
+      const res = await fetch(`/api/nodes/${wellNode.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ metadata: { is_working_project: true } })
+      });
+      if (!res.ok) throw new Error("Failed to update working project status");
+
+      // Update all other wells to non-working project
+      await Promise.all(otherWells.map(well => 
+        fetch(`/api/nodes/${well.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ metadata: { is_working_project: false } })
+        })
+      ));
+
+      fetchNodes();
+      if (onRefresh) onRefresh();
+    } catch (err) {
+      alert("Error setting working project: " + err.message);
+    }
+  };
+
   useEffect(() => {
     const handleMouseMove = (e) => {
       if (!isResizingRef.current) return;
@@ -510,6 +551,9 @@ export default function LeftSidebar({
             {isNodeDefinitive(node) && (
               <span className="text-[10px] text-amber-500 font-bold shrink-0 ml-1.5" title="Definitive">★</span>
             )}
+            {isWellWorkingProject(node) && (
+              <span className="text-[10px] text-emerald-500 font-bold shrink-0 ml-1.5" title="Working Project">👷</span>
+            )}
           </div>
 
           {/* Action buttons on hover (Admin or node creation) */}
@@ -663,6 +707,17 @@ export default function LeftSidebar({
               className="w-full text-left px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-700/60 hover:text-blue-600 dark:hover:text-blue-400 transition flex items-center gap-2 font-medium cursor-pointer"
             >
               <span className="text-amber-500 font-bold text-sm">★</span> Set as Definitive
+            </button>
+          )}
+          {contextMenu.node.type === 'well' && !isWellWorkingProject(contextMenu.node) && (
+            <button
+              onClick={() => {
+                handleSetWorkingProject(contextMenu.node);
+                setContextMenu(prev => ({ ...prev, visible: false }));
+              }}
+              className="w-full text-left px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-700/60 hover:text-blue-600 dark:hover:text-blue-400 transition flex items-center gap-2 font-medium cursor-pointer"
+            >
+              <span className="text-emerald-500 font-bold text-sm">👷</span> Set as Working Project
             </button>
           )}
           <button

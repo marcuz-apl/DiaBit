@@ -112,8 +112,53 @@ export default function Home() {
     return { plan: definitivePlan, survey: definitiveSurvey };
   };
 
+  const getWorkingWellDefinitiveNodes = () => {
+    if (nodes.length === 0) return { plan: null, survey: null };
+    
+    // Find working well
+    let workingWell = nodes.find(n => n.type === 'well' && (n.metadata?.is_working_project === true || n.metadata?.is_working_project === 'true'));
+    if (!workingWell) {
+      workingWell = nodes.find(n => n.type === 'well');
+    }
+    if (!workingWell) return { plan: null, survey: null };
+
+    // Find slots under this working well
+    const slots = nodes.filter(n => n.parent_id === workingWell.id && n.type === 'slot');
+    if (slots.length === 0) return { plan: null, survey: null };
+
+    // Use the first slot or if one of these is currently active, use that one
+    let targetSlot = slots[0];
+    const activeSlot = getCurrentSlot();
+    if (activeSlot && slots.some(s => s.id === activeSlot.id)) {
+      targetSlot = activeSlot;
+    }
+
+    return getDefinitiveNodes(targetSlot);
+  };
+
+  const getWorkingWellSettings = () => {
+    if (nodes.length === 0) return null;
+    let workingWell = nodes.find(n => n.type === 'well' && (n.metadata?.is_working_project === true || n.metadata?.is_working_project === 'true'));
+    if (!workingWell) {
+      workingWell = nodes.find(n => n.type === 'well');
+    }
+    return workingWell;
+  };
+
+  const isActiveNodeUnderWorkingWell = () => {
+    if (!activeNode || nodes.length === 0) return false;
+    let workingWell = nodes.find(n => n.type === 'well' && (n.metadata?.is_working_project === true || n.metadata?.is_working_project === 'true'));
+    if (!workingWell) {
+      workingWell = nodes.find(n => n.type === 'well');
+    }
+    if (!workingWell) return false;
+    const slot = getCurrentSlot();
+    return slot && slot.parent_id === workingWell.id;
+  };
+
   const currentSlot = getCurrentSlot();
   const { plan: defPlan, survey: defSurvey } = getDefinitiveNodes(currentSlot);
+  const { plan: defPlanWorking, survey: defSurveyWorking } = getWorkingWellDefinitiveNodes();
 
   // Load points for active/definitive tables and charts
   useEffect(() => {
@@ -167,10 +212,10 @@ export default function Home() {
         setSurveyPoints([]);
       }
 
-      // 3. Fetch Chart Plan points (always definitive plan)
-      if (defPlan) {
+      // 3. Fetch Chart Plan points (always working project definitive plan)
+      if (defPlanWorking) {
         try {
-          const res = await fetch(`/api/surveys/${defPlan.id}`);
+          const res = await fetch(`/api/surveys/${defPlanWorking.id}`);
           if (res.ok) {
             const data = await res.json();
             setChartPlanPoints(data);
@@ -185,10 +230,10 @@ export default function Home() {
         setChartPlanPoints([]);
       }
 
-      // 4. Fetch Chart Survey points (always definitive survey)
-      if (defSurvey) {
+      // 4. Fetch Chart Survey points (always working project definitive survey)
+      if (defSurveyWorking) {
         try {
-          const res = await fetch(`/api/surveys/${defSurvey.id}`);
+          const res = await fetch(`/api/surveys/${defSurveyWorking.id}`);
           if (res.ok) {
             const data = await res.json();
             setChartSurveyPoints(data);
@@ -205,7 +250,7 @@ export default function Home() {
     };
 
     loadAllPoints();
-  }, [currentSlot, activeNode?.id, defPlan?.id, defSurvey?.id, refreshTrigger]);
+  }, [currentSlot, activeNode?.id, defPlan?.id, defSurvey?.id, defPlanWorking?.id, defSurveyWorking?.id, refreshTrigger]);
 
   // Get active well settings
   const getWellSettings = () => {
@@ -226,6 +271,9 @@ export default function Home() {
   const wellInfo = getWellSettings();
   const units = wellInfo?.metadata?.units || 'metric';
   const vsDirection = wellInfo?.metadata?.vs_direction || 0;
+
+  const workingWell = getWorkingWellSettings();
+  const workingUnits = workingWell?.metadata?.units || 'metric';
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 transition-colors duration-200">
@@ -274,12 +322,19 @@ export default function Home() {
                 </>
               )}
             </div>
-            <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">
-              {currentSlot ? (
-                `Well Reference: ${wellInfo?.name || 'Unknown'} • VS Azimuth: ${vsDirection}°`
-              ) : (
-                "Select a Slot, Plan, or Survey node to load database surveys"
+            <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium flex items-center gap-3">
+              {workingWell && (
+                <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                  👷 Working Project: {workingWell.name}
+                </span>
               )}
+              <span>
+                {currentSlot ? (
+                  `Active Well: ${wellInfo?.name || 'Unknown'} • VS Azimuth: ${vsDirection}°`
+                ) : (
+                  "Select a Slot, Plan, or Survey node to load database surveys"
+                )}
+              </span>
             </div>
           </div>
 
@@ -363,10 +418,10 @@ export default function Home() {
 
               {/* Trajectory Plots */}
               <TrajectoryCharts
-                planPoints={chartPlanPoints}
-                actualPoints={chartSurveyPoints}
+                planPoints={(activeNode && activeNode.type === 'trajectory' && isActiveNodeUnderWorkingWell()) ? planPoints : chartPlanPoints}
+                actualPoints={(activeNode && activeNode.type === 'survey' && isActiveNodeUnderWorkingWell()) ? surveyPoints : chartSurveyPoints}
                 isDark={true}
-                unitSystem={units}
+                unitSystem={workingUnits}
               />
             </>
           )}
