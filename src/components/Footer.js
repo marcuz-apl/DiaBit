@@ -73,7 +73,7 @@ export default function Footer() {
                 <strong>DiaBit</strong> is a directional drilling surveying calculations software suite developed for educational, planning, and evaluation purposes. All calculations are executed using the <strong>Minimum Curvature Method (MCM)</strong> based on industry standards.
               </p>
               <p>
-                While the mathematical models implemented are designed to align with Landmark COMPASS and SysDril, Alfazen Inc. does not guarantee the mathematical accuracy, suitability, or correctness of the generated outputs for real-world field operations.
+                While the mathematical models implemented are designed to align with standard directional surveying methodologies, Alfazen Inc. does not guarantee the mathematical accuracy, suitability, or correctness of the generated outputs for real-world field operations.
               </p>
               <p>
                 <strong>No Liability:</strong> Under no circumstances shall Alfazen Inc. or its affiliates be held liable for any operational losses, drilling incidents, mechanical failures, blowouts, financial damage, or injuries resulting from the use or interpretation of data processed by this application.
