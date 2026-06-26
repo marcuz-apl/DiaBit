@@ -1,4 +1,6 @@
 import crypto from 'crypto';
+import fs from 'fs';
+import path from 'path';
 
 // Hash function helper using Node.js crypto
 function hashPassword(password) {
@@ -77,6 +79,51 @@ export function initDb(db) {
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
   `);
+
+  // 6. Create Field Models table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS field_models (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      model_type TEXT NOT NULL,
+      name TEXT UNIQUE NOT NULL,
+      year INTEGER NOT NULL,
+      provider TEXT,
+      description TEXT,
+      default_strength REAL,
+      default_dip REAL
+    );
+  `);
+
+  const modelCount = db.prepare("SELECT count(*) as count FROM field_models").get().count;
+  if (modelCount === 0) {
+    console.log("Seeding field models from local datasets...");
+    const insertModel = db.prepare(`
+      INSERT OR IGNORE INTO field_models (model_type, name, year, provider, description, default_strength, default_dip)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    try {
+      const gPath = path.join(process.cwd(), 'data', 'g-m-fields', 'gravity_models.json');
+      const mPath = path.join(process.cwd(), 'data', 'g-m-fields', 'magnetic_models.json');
+
+      if (fs.existsSync(gPath)) {
+        const gravityModels = JSON.parse(fs.readFileSync(gPath, 'utf8'));
+        gravityModels.forEach(m => {
+          insertModel.run('gravity', m.name, m.year, m.provider, m.description, m.default_strength, null);
+        });
+      }
+
+      if (fs.existsSync(mPath)) {
+        const magneticModels = JSON.parse(fs.readFileSync(mPath, 'utf8'));
+        magneticModels.forEach(m => {
+          insertModel.run('magnetic', m.name, m.year, m.provider, m.description, m.default_strength, m.default_dip);
+        });
+      }
+      console.log("Field models seeded successfully.");
+    } catch (err) {
+      console.error("Failed to seed field models", err);
+    }
+  }
 
   console.log("Tables verified.");
 

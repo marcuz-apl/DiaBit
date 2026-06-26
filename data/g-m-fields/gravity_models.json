@@ -1,0 +1,30 @@
+[
+  {
+    "name": "WGS84",
+    "year": 1984,
+    "provider": "NGA",
+    "description": "World Geodetic System 1984 gravity ellipsoid model",
+    "default_strength": 980.665
+  },
+  {
+    "name": "GRS80",
+    "year": 1980,
+    "provider": "IUGG",
+    "description": "Geodetic Reference System 1980 standard",
+    "default_strength": 980.629
+  },
+  {
+    "name": "EGM2008",
+    "year": 2008,
+    "provider": "NGA",
+    "description": "Earth Gravitational Model 2008 (high resolution)",
+    "default_strength": 980.665
+  },
+  {
+    "name": "EGM96",
+    "year": 1996,
+    "provider": "NGA/NASA",
+    "description": "Earth Gravitational Model 1996 spherical harmonics",
+    "default_strength": 980.665
+  }
+]

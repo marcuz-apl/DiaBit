@@ -35,6 +35,26 @@ export default function RightSidebar({
   const [northReference, setNorthReference] = useState('grid');
   const [gridConvergenceUsed, setGridConvergenceUsed] = useState(true);
 
+  // States for reference models from API
+  const [gravityModels, setGravityModels] = useState([]);
+  const [magneticModels, setMagneticModels] = useState([]);
+
+  useEffect(() => {
+    const fetchModels = async () => {
+      try {
+        const res = await fetch('/api/models');
+        if (res.ok) {
+          const data = await res.json();
+          setGravityModels(data.gravity || []);
+          setMagneticModels(data.magnetic || []);
+        }
+      } catch (err) {
+        console.error("Failed to fetch reference models", err);
+      }
+    };
+    fetchModels();
+  }, []);
+
   // Tie-in settings (specific to trajectory metadata or defaults)
   const [tieInMd, setTieInMd] = useState(0);
   const [tieInInc, setTieInInc] = useState(0);
@@ -163,6 +183,21 @@ export default function RightSidebar({
       setWellNode(null);
     }
   }, [activeNode, nodes]);
+
+  const handleAutofillMagnetic = () => {
+    const model = magneticModels.find(m => m.name === magneticModel);
+    if (model) {
+      if (model.default_strength) setMagneticField(model.default_strength);
+      if (model.default_dip) setMagneticDip(model.default_dip);
+    }
+  };
+
+  const handleAutofillGravity = () => {
+    const model = gravityModels.find(m => m.name === gravityModel);
+    if (model) {
+      if (model.default_strength) setGravityField(model.default_strength);
+    }
+  };
 
   const handleSaveSettings = async () => {
     if (!wellNode || !activeNode) return;
@@ -521,14 +556,28 @@ export default function RightSidebar({
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="block text-[10px] text-slate-400 font-normal">Declination Model</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. HDGM 2025"
+                    <div className="flex justify-between items-center mb-0.5">
+                      <label className="block text-[10px] text-slate-400 font-normal">Declination Model</label>
+                      {magneticModel && (
+                        <button
+                          type="button"
+                          onClick={handleAutofillMagnetic}
+                          className="text-[9px] text-blue-500 hover:text-blue-400 font-bold cursor-pointer"
+                        >
+                          Autofill
+                        </button>
+                      )}
+                    </div>
+                    <select
                       value={magneticModel}
                       onChange={(e) => setMagneticModel(e.target.value)}
-                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 focus:border-blue-500 outline-none text-slate-855 dark:text-slate-100 text-right"
-                    />
+                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 focus:border-blue-500 outline-none text-slate-800 dark:text-slate-100"
+                    >
+                      <option value="">-- Select Model --</option>
+                      {magneticModels.map(m => (
+                        <option key={m.name} value={m.name}>{m.name}</option>
+                      ))}
+                    </select>
                   </div>
                   <div>
                     <label className="block text-[10px] text-slate-400">Mag Field (B_ref, nT)</label>
@@ -543,7 +592,7 @@ export default function RightSidebar({
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="block text-[10px] text-slate-400">Magnetic Dip Angle</label>
+                    <label className="block text-[10px] text-slate-400 font-normal">Magnetic Dip Angle</label>
                     <input
                       type="number"
                       step="0.1"
@@ -553,7 +602,7 @@ export default function RightSidebar({
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] text-slate-400">Gravity Strength (mGal)</label>
+                    <label className="block text-[10px] text-slate-400 font-normal">Gravity Strength (mGal)</label>
                     <input
                       type="number"
                       step="0.001"
@@ -564,15 +613,29 @@ export default function RightSidebar({
                   </div>
                 </div>
 
-                <div className="space-y-1">
-                  <label className="block text-[10px] text-slate-400 font-normal">Gravity Model</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. GARM"
+                <div>
+                  <div className="flex justify-between items-center mb-0.5">
+                    <label className="block text-[10px] text-slate-400 font-normal">Gravity Model</label>
+                    {gravityModel && (
+                      <button
+                        type="button"
+                        onClick={handleAutofillGravity}
+                        className="text-[9px] text-blue-500 hover:text-blue-400 font-bold cursor-pointer"
+                      >
+                        Autofill
+                      </button>
+                    )}
+                  </div>
+                  <select
                     value={gravityModel}
                     onChange={(e) => setGravityModel(e.target.value)}
-                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-2.5 py-1.5 focus:border-blue-500 outline-none text-slate-855 dark:text-slate-100 text-right"
-                  />
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-2.5 py-1.5 focus:border-blue-500 outline-none text-slate-800 dark:text-slate-100"
+                  >
+                    <option value="">-- Select Model --</option>
+                    {gravityModels.map(m => (
+                      <option key={m.name} value={m.name}>{m.name}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 

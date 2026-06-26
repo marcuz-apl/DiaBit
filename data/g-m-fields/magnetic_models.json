@@ -1,0 +1,58 @@
+[
+  {
+    "name": "HDGM 2025",
+    "year": 2025,
+    "provider": "NOAA",
+    "description": "High Definition Geomagnetic Model 2025",
+    "default_strength": 48500,
+    "default_dip": 60.5
+  },
+  {
+    "name": "HDGM 2024",
+    "year": 2024,
+    "provider": "NOAA",
+    "description": "High Definition Geomagnetic Model 2024",
+    "default_strength": 48600,
+    "default_dip": 60.4
+  },
+  {
+    "name": "WMM 2025",
+    "year": 2025,
+    "provider": "NOAA/BGS",
+    "description": "World Magnetic Model 2025",
+    "default_strength": 50000,
+    "default_dip": 60.0
+  },
+  {
+    "name": "WMM 2020",
+    "year": 2020,
+    "provider": "NOAA/BGS",
+    "description": "World Magnetic Model 2020",
+    "default_strength": 50500,
+    "default_dip": 60.1
+  },
+  {
+    "name": "IGRF-14 (2025)",
+    "year": 2025,
+    "provider": "IAGA",
+    "description": "International Geomagnetic Reference Field 14th Gen",
+    "default_strength": 49000,
+    "default_dip": 59.8
+  },
+  {
+    "name": "IGRF-13 (2020)",
+    "year": 2020,
+    "provider": "IAGA",
+    "description": "International Geomagnetic Reference Field 13th Gen",
+    "default_strength": 49500,
+    "default_dip": 59.9
+  },
+  {
+    "name": "BGGM 2025",
+    "year": 2025,
+    "provider": "BP/BGS",
+    "description": "BP-BGS Global Magnetic Model 2025",
+    "default_strength": 48750,
+    "default_dip": 60.3
+  }
+]
