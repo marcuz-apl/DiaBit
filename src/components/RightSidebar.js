@@ -41,7 +41,6 @@ export default function RightSidebar({
 
   // CRS registry state
   const [crsOptions, setCrsOptions] = useState([]);
-  const [crsSearch, setCrsSearch] = useState('');
   const [selectedCrsObj, setSelectedCrsObj] = useState(null);
   const [isFetchingGeo, setIsFetchingGeo] = useState(false);
 
@@ -66,17 +65,26 @@ export default function RightSidebar({
     fetchModels();
   }, []);
 
-  // Fetch CRS options (filtered by search text)
+  // Fetch CRS options (filtered by the current crs text the user is typing)
   useEffect(() => {
     const fetchCrs = async () => {
       try {
-        const q = crsSearch.trim();
+        const q = (crs || '').trim();
         const res = await fetch(`/api/crs${q ? '?q=' + encodeURIComponent(q) : ''}`);
         if (res.ok) setCrsOptions(await res.json());
       } catch (_) {}
     };
     fetchCrs();
-  }, [crsSearch]);
+  }, [crs]);
+
+  // Sync selectedCrsObj when the crs string matches an option in the list
+  useEffect(() => {
+    if (!crs || crsOptions.length === 0) return;
+    const match = crsOptions.find(c => c.name === crs);
+    if (match && (!selectedCrsObj || selectedCrsObj.id !== match.id)) {
+      setSelectedCrsObj(match);
+    }
+  }, [crs, crsOptions]);
 
   // Auto UTM → Lat/Lon when easting, northing, or CRS selection changes
   useEffect(() => {
@@ -460,36 +468,21 @@ export default function RightSidebar({
                   </div>
                   <input
                     type="text"
-                    value={crsSearch || crs}
+                    value={crs}
                     onChange={(e) => {
-                      setCrsSearch(e.target.value);
                       setCrs(e.target.value);
                       setSelectedCrsObj(null);
                     }}
-                    placeholder="Search: \"14N\", \"32614\", \"UTM Zone\""
+                    placeholder='Search: "14N", "32614", "UTM Zone"'
                     list="crs-datalist"
                     autoComplete="off"
                     className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-2.5 py-1.5 focus:border-blue-500 outline-none text-slate-850 dark:text-slate-100 text-xs"
                   />
                   <datalist id="crs-datalist">
                     {crsOptions.map(c => (
-                      <option key={c.id} value={c.name}>
-                        EPSG:{c.epsg_code} — {c.name}
-                      </option>
+                      <option key={c.id} value={c.name} />
                     ))}
                   </datalist>
-                  {/* Hidden: sync selectedCrsObj when user picks from datalist */}
-                  {crsOptions.length > 0 && (() => {
-                    const match = crsOptions.find(c => c.name === (crsSearch || crs));
-                    if (match && (!selectedCrsObj || selectedCrsObj.id !== match.id)) {
-                      setTimeout(() => {
-                        setSelectedCrsObj(match);
-                        setCrs(match.name);
-                        setCrsSearch('');
-                      }, 0);
-                    }
-                    return null;
-                  })()}
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
