@@ -489,6 +489,12 @@ export default function Home() {
   const units = wellInfo?.metadata?.units || 'metric';
   const vsDirection = wellInfo?.metadata?.vs_direction || 0;
 
+  const declination = parseFloat(wellInfo?.metadata?.declination) || 0;
+  const gridConvergence = parseFloat(wellInfo?.metadata?.grid_convergence) || 0;
+  const northRef = wellInfo?.metadata?.north_reference || 'grid';
+  const gridConvUsed = wellInfo?.metadata?.grid_convergence_used === true || wellInfo?.metadata?.grid_convergence_used === 'true' || wellInfo?.metadata?.grid_convergence_used === 'yes';
+  const totalCorrection = northRef === 'grid' && gridConvUsed ? declination - gridConvergence : declination;
+
   const workingWell = getWorkingWellSettings();
   const workingUnits = workingWell?.metadata?.units || 'metric';
 
@@ -665,6 +671,7 @@ export default function Home() {
                     unitSystem={units}
                     vsDirection={vsDirection}
                     tieIn={((activeNode && activeNode.type === 'trajectory') ? activeNode.metadata?.tie_in : defPlan?.metadata?.tie_in) || { md: 0, inc: 0, az: 0, tvd: 0, north: 0, east: 0 }}
+                    totalCorrection={0}
                     onChange={(newPoints) => {
                       setPlanPoints(newPoints);
                     }}
@@ -697,6 +704,7 @@ export default function Home() {
                     unitSystem={units}
                     vsDirection={vsDirection}
                     tieIn={((activeNode && activeNode.type === 'survey') ? activeNode.metadata?.tie_in : defSurvey?.metadata?.tie_in) || { md: 0, inc: 0, az: 0, tvd: 0, north: 0, east: 0 }}
+                    totalCorrection={totalCorrection}
                     onChange={(newPoints) => {
                       setSurveyPoints(newPoints);
                     }}

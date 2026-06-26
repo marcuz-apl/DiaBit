@@ -2,7 +2,7 @@
  
 import React from 'react';
 import Link from 'next/link';
-import { ArrowLeft, BookOpen, Compass, FileText, Settings, Upload } from 'lucide-react';
+import { ArrowLeft, BookOpen, Compass, FileText, Settings, Upload, Sliders } from 'lucide-react';
 import pkg from '../../../package.json';
 
 export default function HelpPage() {
@@ -90,6 +90,61 @@ export default function HelpPage() {
               <p className="mt-1 pl-4 text-slate-600 dark:text-slate-450 leading-relaxed">
                 VS = CumulativeEast * sin(&theta;_VS) + CumulativeNorth * cos(&theta;_VS)<br />
                 where &theta;_VS is the user-configured vertical section direction.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* Section: Magnetic & Gravity Parameters */}
+        <section className="space-y-4 border-t border-slate-200 dark:border-slate-850 pt-6">
+          <h2 className="text-lg font-bold flex items-center gap-2 text-slate-850 dark:text-slate-200">
+            <Sliders className="h-5 w-5 text-amber-500" />
+            Geomagnetic & Gravity Field Parameters
+          </h2>
+          <p className="text-xs text-slate-650 dark:text-slate-400 leading-relaxed">
+            In directional drilling surveying, Measurement While Drilling (MWD) tools utilize 3-axis magnetometers and 3-axis accelerometers to measure inclination and azimuth downhole. These sensors must be calibrated and checked against local Earth gravity and magnetic reference fields.
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="bg-white border border-slate-200 dark:border-slate-800 dark:bg-slate-900 rounded-xl p-4 shadow-sm text-xs space-y-3">
+              <h3 className="font-semibold text-slate-800 dark:text-slate-200">Geomagnetic Models (HDGM 2025, WMM, IGRF)</h3>
+              <p className="text-slate-650 dark:text-slate-400 leading-relaxed">
+                Geomagnetic models calculate the local Earth magnetic field vector based on geographical coordinates (latitude, longitude), elevation, and date.
+              </p>
+              <ul className="list-disc list-inside space-y-1 text-slate-650 dark:text-slate-450 pl-2">
+                <li><strong>Declination (D):</strong> Angle between True North and Magnetic North. Used to correct raw compass headings.</li>
+                <li><strong>Dip Angle (Dip):</strong> Angle of the magnetic vector relative to horizontal (0° at equator, &plusmn;90° at poles).</li>
+                <li><strong>Field Strength (B_ref):</strong> Reference magnetic magnitude (typically 25,000 to 65,000 nT).</li>
+              </ul>
+            </div>
+
+            <div className="bg-white border border-slate-200 dark:border-slate-800 dark:bg-slate-900 rounded-xl p-4 shadow-sm text-xs space-y-3">
+              <h3 className="font-semibold text-slate-800 dark:text-slate-200">Gravity Reference Models (GARM, WGS84)</h3>
+              <p className="text-slate-650 dark:text-slate-400 leading-relaxed">
+                Standard gravity models calculate the expected reference gravity field (G_ref) as a function of latitude and elevation.
+              </p>
+              <ul className="list-disc list-inside space-y-1 text-slate-650 dark:text-slate-450 pl-2">
+                <li><strong>Field Strength (G_ref):</strong> Standard gravity is ~980.665 mGal (or 1.0 g). It varies slightly based on location.</li>
+                <li><strong>Quality Control (QC):</strong> MWD surveys must satisfy |G_meas - G_ref| &le; &plusmn;0.003 g and |B_meas - B_ref| &le; &plusmn;300 nT to verify tool accuracy and rule out magnetic interference.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="bg-white border border-slate-200 dark:border-slate-800 dark:bg-slate-900 rounded-xl p-4 text-xs space-y-4 shadow-sm font-mono overflow-x-auto">
+            <div>
+              <span className="font-semibold text-blue-600 dark:text-blue-400">1. Azimuth Correction to Grid North:</span>
+              <p className="mt-1 pl-4 text-slate-600 dark:text-slate-450 leading-relaxed">
+                Total Correction (TC) = Magnetic Declination (D) - Grid Convergence (&gamma;)<br />
+                Corrected Azimuth = (Measured Azimuth + TC) mod 360
+              </p>
+            </div>
+
+            <div>
+              <span className="font-semibold text-blue-600 dark:text-blue-400">2. Short Collar Correction (SCC) for Axial Magnetic Interference:</span>
+              <p className="mt-1 pl-4 text-slate-600 dark:text-slate-450 leading-relaxed">
+                BHA steel components corrupt the axial magnetometer measurement (Bz). Under the assumption that gravity readings are uncorrupted, the correct Bz can be resolved using the transverse magnetometers (Bx, By) and accelerometers (Gx, Gy, Gz):<br />
+                Bz_corr = [B_ref * sin(Dip_ref) - (Gx * Bx + Gy * By)] / Gz<br />
+                The corrected Bz is then used to recalculate the uncorrupted magnetic azimuth.
               </p>
             </div>
           </div>

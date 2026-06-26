@@ -17,6 +17,24 @@ export default function RightSidebar({
   const [easting, setEasting] = useState(0);
   const [northing, setNorthing] = useState(0);
 
+  // New calculation settings
+  const [crs, setCrs] = useState('');
+  const [gridConvergence, setGridConvergence] = useState(0);
+  const [scaleFactor, setScaleFactor] = useState(1.0);
+  const [surveyMethod, setSurveyMethod] = useState('Minimum Curvature / Lubinski');
+  const [datum, setDatum] = useState('KB');
+  const [refElevation, setRefElevation] = useState(0);
+  const [glElevation, setGlElevation] = useState(0);
+  const [declination, setDeclination] = useState(0);
+  const [gravityField, setGravityField] = useState(980.665);
+  const [gravityModel, setGravityModel] = useState('GARM');
+  const [magneticField, setMagneticField] = useState(50000);
+  const [magneticDip, setMagneticDip] = useState(60);
+  const [declinationDate, setDeclinationDate] = useState('');
+  const [magneticModel, setMagneticModel] = useState('HDGM 2025');
+  const [northReference, setNorthReference] = useState('grid');
+  const [gridConvergenceUsed, setGridConvergenceUsed] = useState(true);
+
   // Tie-in settings (specific to trajectory metadata or defaults)
   const [tieInMd, setTieInMd] = useState(0);
   const [tieInInc, setTieInInc] = useState(0);
@@ -101,6 +119,27 @@ export default function RightSidebar({
       setEasting(meta.easting || 0);
       setNorthing(meta.northing || 0);
 
+      setCrs(meta.crs || '');
+      setGridConvergence(meta.grid_convergence || 0);
+      setScaleFactor(meta.scale_factor || 1.0);
+      setSurveyMethod(meta.survey_method || 'Minimum Curvature / Lubinski');
+      setDatum(meta.datum || 'KB');
+      setRefElevation(meta.ref_elevation || 0);
+      setGlElevation(meta.gl_elevation || 0);
+      setDeclination(meta.declination || 0);
+      setGravityField(meta.gravity_field || 980.665);
+      setGravityModel(meta.gravity_model || 'GARM');
+      setMagneticField(meta.magnetic_field || 50000);
+      setMagneticDip(meta.magnetic_dip || 60);
+      setDeclinationDate(meta.declination_date || '');
+      setMagneticModel(meta.magnetic_model || 'HDGM 2025');
+      setNorthReference(meta.north_reference || 'grid');
+      setGridConvergenceUsed(
+        meta.grid_convergence_used !== undefined
+          ? (meta.grid_convergence_used === true || meta.grid_convergence_used === 'true' || meta.grid_convergence_used === 'yes')
+          : true
+      );
+
       // Trajectory specific tie-in settings (only applicable to trajectory or survey)
       if (active.type === 'trajectory' || active.type === 'survey') {
         const trajMeta = active.metadata || {};
@@ -138,7 +177,23 @@ export default function RightSidebar({
         latitude: parseFloat(latitude) || 0,
         longitude: parseFloat(longitude) || 0,
         easting: parseFloat(easting) || 0,
-        northing: parseFloat(northing) || 0
+        northing: parseFloat(northing) || 0,
+        crs,
+        grid_convergence: parseFloat(gridConvergence) || 0,
+        scale_factor: parseFloat(scaleFactor) || 1.0,
+        survey_method: surveyMethod,
+        datum,
+        ref_elevation: parseFloat(refElevation) || 0,
+        gl_elevation: parseFloat(glElevation) || 0,
+        declination: parseFloat(declination) || 0,
+        gravity_field: parseFloat(gravityField) || 980.665,
+        gravity_model: gravityModel,
+        magnetic_field: parseFloat(magneticField) || 50000,
+        magnetic_dip: parseFloat(magneticDip) || 60,
+        declination_date: declinationDate,
+        magnetic_model: magneticModel,
+        north_reference: northReference,
+        grid_convergence_used: gridConvergenceUsed
       };
 
       const wellRes = await fetch(`/api/nodes/${wellNode.id}`, {
@@ -224,11 +279,11 @@ export default function RightSidebar({
 
             {/* Config Fields */}
             <div className="flex-1 space-y-5 text-xs text-slate-700 dark:text-slate-300">
-              {/* Section 1: Units & Direction */}
+              {/* Section 1: General & Calculation Parameters */}
               <div className="space-y-2">
                 <div className="flex items-center gap-1.5 font-semibold text-slate-800 dark:text-slate-200 uppercase text-[10px] tracking-wider">
                   <Compass className="h-3.5 w-3.5 text-blue-400" />
-                  General Parameters
+                  General & Calculation
                 </div>
                 
                 <div className="space-y-1">
@@ -244,7 +299,18 @@ export default function RightSidebar({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="block text-[10px] text-slate-400">Vertical Section Direction (° Azimuth)</label>
+                  <label className="block text-[10px] text-slate-400">Survey Computation Method</label>
+                  <select
+                    value={surveyMethod}
+                    disabled
+                    className="w-full bg-slate-100 dark:bg-slate-805 border border-slate-300 dark:border-slate-700 rounded px-2.5 py-1.5 focus:border-blue-500 outline-none text-slate-500 dark:text-slate-400 cursor-not-allowed"
+                  >
+                    <option value="Minimum Curvature / Lubinski">Minimum Curvature / Lubinski</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-[10px] text-slate-400">Vertical Section Azimuth (° Azimuth)</label>
                   <input
                     type="number"
                     value={vsDirection}
@@ -252,18 +318,60 @@ export default function RightSidebar({
                     className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-2.5 py-1.5 focus:border-blue-500 outline-none text-slate-850 dark:text-slate-100 text-right"
                   />
                 </div>
+
+                <div className="space-y-1">
+                  <label className="block text-[10px] text-slate-400">North Reference</label>
+                  <select
+                    value={northReference}
+                    onChange={(e) => setNorthReference(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-2.5 py-1.5 focus:border-blue-500 outline-none text-slate-800 dark:text-slate-100"
+                  >
+                    <option value="grid">Grid North</option>
+                    <option value="true">True North</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-[10px] text-slate-400">Grid Convergence Used</label>
+                  <select
+                    value={gridConvergenceUsed ? 'yes' : 'no'}
+                    onChange={(e) => setGridConvergenceUsed(e.target.value === 'yes')}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-2.5 py-1.5 focus:border-blue-500 outline-none text-slate-800 dark:text-slate-100"
+                  >
+                    <option value="yes">Yes</option>
+                    <option value="no">No</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1 bg-blue-500/10 border border-blue-500/20 rounded p-2 mt-1">
+                  <label className="block text-[9px] text-blue-500 dark:text-blue-400 font-bold uppercase tracking-wider">Total Correction (Mag → Grid)</label>
+                  <div className="text-right font-mono font-bold text-slate-800 dark:text-slate-200">
+                    {((northReference === 'grid' && gridConvergenceUsed) ? (parseFloat(declination) || 0) - (parseFloat(gridConvergence) || 0) : (parseFloat(declination) || 0)).toFixed(4)}°
+                  </div>
+                </div>
               </div>
 
-              {/* Section 2: Wellhead Location */}
+              {/* Section 2: Wellhead Reference & CRS */}
               <div className="space-y-2">
                 <div className="flex items-center gap-1.5 font-semibold text-slate-800 dark:text-slate-200 uppercase text-[10px] tracking-wider">
                   <Map className="h-3.5 w-3.5 text-blue-400" />
-                  Wellhead Reference (UTM/Local)
+                  Wellhead Location & CRS
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-[10px] text-slate-400">Coordinate Reference System (CRS)</label>
+                  <input
+                    type="text"
+                    value={crs}
+                    onChange={(e) => setCrs(e.target.value)}
+                    placeholder="e.g. UTM Zone 14N"
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-2.5 py-1.5 focus:border-blue-500 outline-none text-slate-850 dark:text-slate-100"
+                  />
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="block text-[10px] text-slate-400">Easting (X)</label>
+                    <label className="block text-[10px] text-slate-400">Surface Location X</label>
                     <input
                       type="number"
                       value={easting}
@@ -272,7 +380,7 @@ export default function RightSidebar({
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] text-slate-400">Northing (Y)</label>
+                    <label className="block text-[10px] text-slate-400">Surface Location Y</label>
                     <input
                       type="number"
                       value={northing}
@@ -305,13 +413,165 @@ export default function RightSidebar({
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-[10px] text-slate-400">Wellhead Elevation ({lenLabel})</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[10px] text-slate-400">Grid Convergence Angle</label>
+                    <input
+                      type="number"
+                      step="0.0001"
+                      value={gridConvergence}
+                      onChange={(e) => setGridConvergence(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 focus:border-blue-500 outline-none text-slate-850 dark:text-slate-100 text-right"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-slate-400">Grid Scale Factor</label>
+                    <input
+                      type="number"
+                      step="0.000001"
+                      value={scaleFactor}
+                      onChange={(e) => setScaleFactor(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 focus:border-blue-500 outline-none text-slate-855 dark:text-slate-100 text-right"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Section 3: Elevations & Reference Datums */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-1.5 font-semibold text-slate-800 dark:text-slate-200 uppercase text-[10px] tracking-wider">
+                  <Map className="h-3.5 w-3.5 text-blue-400" />
+                  Elevations & Datums
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[10px] text-slate-400">Reference Datum</label>
+                    <select
+                      value={datum}
+                      onChange={(e) => setDatum(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 focus:border-blue-500 outline-none text-slate-800 dark:text-slate-100"
+                    >
+                      <option value="KB">KB (Kelly Bushing)</option>
+                      <option value="RF">RF (Rig Floor)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-slate-400">Datum Elev ({lenLabel})</label>
+                    <input
+                      type="number"
+                      value={refElevation}
+                      onChange={(e) => setRefElevation(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 focus:border-blue-500 outline-none text-slate-855 dark:text-slate-100 text-right"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[10px] text-slate-400">Ground Level Elev ({lenLabel})</label>
+                    <input
+                      type="number"
+                      value={glElevation}
+                      onChange={(e) => setGlElevation(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 focus:border-blue-500 outline-none text-slate-855 dark:text-slate-100 text-right"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-slate-400">Wellhead Elev ({lenLabel})</label>
+                    <input
+                      type="number"
+                      value={elevation}
+                      onChange={(e) => setElevation(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 focus:border-blue-500 outline-none text-slate-855 dark:text-slate-100 text-right"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Section 4: Geomagnetic & Gravity Parameters */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-1.5 font-semibold text-slate-800 dark:text-slate-200 uppercase text-[10px] tracking-wider">
+                  <Compass className="h-3.5 w-3.5 text-blue-400" />
+                  Geomagnetic & Gravity
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[10px] text-slate-400">Mag Declination (D)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={declination}
+                      onChange={(e) => setDeclination(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 focus:border-blue-500 outline-none text-slate-855 dark:text-slate-100 text-right"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-slate-400 font-normal">Declination Date</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 2026-06-26"
+                      value={declinationDate}
+                      onChange={(e) => setDeclinationDate(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 focus:border-blue-500 outline-none text-slate-850 dark:text-slate-100 text-right"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[10px] text-slate-400 font-normal">Declination Model</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. HDGM 2025"
+                      value={magneticModel}
+                      onChange={(e) => setMagneticModel(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 focus:border-blue-500 outline-none text-slate-855 dark:text-slate-100 text-right"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-slate-400">Mag Field (B_ref, nT)</label>
+                    <input
+                      type="number"
+                      value={magneticField}
+                      onChange={(e) => setMagneticField(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 focus:border-blue-500 outline-none text-slate-855 dark:text-slate-100 text-right"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[10px] text-slate-400">Magnetic Dip Angle</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={magneticDip}
+                      onChange={(e) => setMagneticDip(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 focus:border-blue-500 outline-none text-slate-855 dark:text-slate-100 text-right"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-slate-400">Gravity Strength (mGal)</label>
+                    <input
+                      type="number"
+                      step="0.001"
+                      value={gravityField}
+                      onChange={(e) => setGravityField(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 focus:border-blue-500 outline-none text-slate-855 dark:text-slate-100 text-right"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-[10px] text-slate-400 font-normal">Gravity Model</label>
                   <input
-                    type="number"
-                    value={elevation}
-                    onChange={(e) => setElevation(e.target.value)}
-                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 focus:border-blue-500 outline-none text-slate-855 dark:text-slate-100 text-right"
+                    type="text"
+                    placeholder="e.g. GARM"
+                    value={gravityModel}
+                    onChange={(e) => setGravityModel(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-2.5 py-1.5 focus:border-blue-500 outline-none text-slate-855 dark:text-slate-100 text-right"
                   />
                 </div>
               </div>

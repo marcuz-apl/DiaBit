@@ -121,7 +121,23 @@ export function initDb(db) {
       northing: 3540000,
       elevation: 2850, // ft
       vs_direction: 45.0, // degrees
-      units: 'metric' // default units
+      units: 'metric', // default units
+      crs: "UTM Zone 14N",
+      grid_convergence: 1.25,
+      scale_factor: 0.9996,
+      survey_method: "Minimum Curvature / Lubinski",
+      datum: "KB",
+      ref_elevation: 2850,
+      gl_elevation: 2825,
+      declination: 6.5,
+      gravity_field: 980.665,
+      gravity_model: "WGS84 / Somigliana",
+      magnetic_field: 48500,
+      magnetic_dip: 60.5,
+      declination_date: "2026-06-26",
+      magnetic_model: "HDGM 2025",
+      north_reference: "grid",
+      grid_convergence_used: true
     })).lastInsertRowid;
     // Slot-A1
     const slotId = insertNode.run(wellId, 'Slot-A1', 'slot', JSON.stringify({ offset_x: 0, offset_y: 0 })).lastInsertRowid;

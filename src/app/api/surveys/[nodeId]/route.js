@@ -24,6 +24,24 @@ function getWellSettings(nodeId) {
       easting: wellMetadata.easting || 0,
       northing: wellMetadata.northing || 0,
       elevation: wellMetadata.elevation || 0,
+      crs: wellMetadata.crs || '',
+      grid_convergence: wellMetadata.grid_convergence || 0,
+      scale_factor: wellMetadata.scale_factor || 1.0,
+      survey_method: wellMetadata.survey_method || 'Minimum Curvature / Lubinski',
+      datum: wellMetadata.datum || 'KB',
+      ref_elevation: wellMetadata.ref_elevation || 0,
+      gl_elevation: wellMetadata.gl_elevation || 0,
+      declination: wellMetadata.declination || 0,
+      gravity_field: wellMetadata.gravity_field || 980.665,
+      gravity_model: wellMetadata.gravity_model || 'GARM',
+      magnetic_field: wellMetadata.magnetic_field || 50000,
+      magnetic_dip: wellMetadata.magnetic_dip || 60,
+      declination_date: wellMetadata.declination_date || '',
+      magnetic_model: wellMetadata.magnetic_model || 'HDGM 2025',
+      north_reference: wellMetadata.north_reference || 'grid',
+      grid_convergence_used: wellMetadata.grid_convergence_used !== undefined
+        ? (wellMetadata.grid_convergence_used === true || wellMetadata.grid_convergence_used === 'true' || wellMetadata.grid_convergence_used === 'yes')
+        : true,
       tie_in: trajMetadata.tie_in || { md: 0, inc: 0, az: 0, tvd: 0, north: 0, east: 0 }
     };
   } catch (e) {
@@ -85,13 +103,38 @@ export async function POST(request, { params }) {
       tie_in: { md: 0, inc: 0, az: 0, tvd: 0, north: 0, east: 0 }
     };
 
-    // Calculate full trajectories using Minimum Curvature Method
+    const trajectoryNode = db.prepare("SELECT * FROM nodes WHERE id = ?").get(nodeId);
+    const isSurvey = trajectoryNode ? trajectoryNode.type === 'survey' : false;
+
+    let totalCorrection = 0;
+    if (isSurvey) {
+      const declination = parseFloat(settings.declination) || 0;
+      const gridConvergence = parseFloat(settings.grid_convergence) || 0;
+      const northRef = settings.north_reference || 'grid';
+      const gridConvUsed = settings.grid_convergence_used;
+      
+      if (northRef === 'grid' && gridConvUsed) {
+        totalCorrection = declination - gridConvergence;
+      } else {
+        totalCorrection = declination;
+      }
+    }
+
+    // Calculate full trajectories using Minimum Curvature Method (with corrected azimuth for surveys)
     const calculatedPoints = calculateSurvey(
-      rawPoints.map(p => ({
-        md: parseFloat(p.md),
-        inc: parseFloat(p.inclination || p.inc || 0),
-        az: parseFloat(p.azimuth || p.az || 0)
-      })),
+      rawPoints.map(p => {
+        const rawAz = parseFloat(p.azimuth || p.az || 0);
+        let corrAz = rawAz;
+        if (isSurvey) {
+          corrAz = (rawAz + totalCorrection) % 360;
+          if (corrAz < 0) corrAz += 360;
+        }
+        return {
+          md: parseFloat(p.md),
+          inc: parseFloat(p.inclination || p.inc || 0),
+          az: corrAz
+        };
+      }),
       settings.tie_in,
       settings.vs_direction,
       settings.units === 'imperial' ? 'imperial' : 'metric'
@@ -109,12 +152,14 @@ export async function POST(request, { params }) {
       `);
 
       calculatedPoints.forEach((pt, idx) => {
+        const rawPt = rawPoints[idx] || {};
+        const rawAz = parseFloat(rawPt.azimuth || rawPt.az || 0);
         insertStmt.run(
           nodeId,
           idx,
           pt.md,
           pt.inc,
-          pt.az,
+          rawAz, // Raw azimuth stored in DB
           pt.tvd,
           pt.north,
           pt.east,

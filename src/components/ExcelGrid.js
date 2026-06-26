@@ -17,6 +17,7 @@ export default function ExcelGrid({
   unitSystem = 'metric',
   vsDirection = 0,
   tieIn = { md: 0, inc: 0, az: 0, tvd: 0, north: 0, east: 0 },
+  totalCorrection = 0,
   onChange = () => {},
   onSaveSuccess = () => {}
 }) {
@@ -73,11 +74,19 @@ export default function ExcelGrid({
 
   // Recalculates all points based on current MD, Inc, Az inputs
   const triggerRecalculate = (currentPoints) => {
-    const rawInputs = currentPoints.map(p => ({
-      md: parseFloat(p.md) || 0,
-      inc: parseFloat(p.inclination) || 0,
-      az: parseFloat(p.azimuth) || 0
-    }));
+    const rawInputs = currentPoints.map(p => {
+      const rawAz = parseFloat(p.azimuth) || 0;
+      let corrAz = rawAz;
+      if (nodeId && totalCorrection) {
+        corrAz = (rawAz + totalCorrection) % 360;
+        if (corrAz < 0) corrAz += 360;
+      }
+      return {
+        md: parseFloat(p.md) || 0,
+        inc: parseFloat(p.inclination) || 0,
+        az: corrAz
+      };
+    });
 
     const calculated = calculateSurvey(
       rawInputs,
@@ -86,19 +95,22 @@ export default function ExcelGrid({
       unitSystem === 'imperial' ? 'imperial' : 'metric'
     );
 
-    // Map back into grid format
-    const mapped = calculated.map((c, idx) => ({
-      md: c.md,
-      inclination: c.inc,
-      azimuth: c.az,
-      tvd: c.tvd,
-      north: c.north,
-      east: c.east,
-      dls: c.dls,
-      vs: c.vs,
-      closureDist: c.closureDist,
-      closureAz: c.closureAz
-    }));
+    // Map back into grid format, preserving raw azimuth in the table display
+    const mapped = calculated.map((c, idx) => {
+      const rawPt = currentPoints[idx] || {};
+      return {
+        md: c.md,
+        inclination: c.inc,
+        azimuth: rawPt.azimuth !== undefined ? rawPt.azimuth : c.az,
+        tvd: c.tvd,
+        north: c.north,
+        east: c.east,
+        dls: c.dls,
+        vs: c.vs,
+        closureDist: c.closureDist,
+        closureAz: c.closureAz
+      };
+    });
 
     setPoints(mapped);
     onChange(mapped);
