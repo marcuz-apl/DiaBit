@@ -1,8 +1,9 @@
 'use client';
-
+ 
 import React from 'react';
 import Link from 'next/link';
 import { ArrowLeft, BookOpen, Compass, FileText, Settings, Upload } from 'lucide-react';
+import pkg from '../../../package.json';
 
 export default function HelpPage() {
   return (
@@ -21,7 +22,7 @@ export default function HelpPage() {
             DiaBit Documentation
           </span>
           <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">
-            v1.0.0 Help Center
+            v{pkg.version} Help Center
           </span>
         </div>
       </nav>

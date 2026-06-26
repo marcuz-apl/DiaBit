@@ -19,6 +19,7 @@ export default function Home() {
   const [currentUser, setCurrentUser] = useState(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [autoSaveMinutes, setAutoSaveMinutes] = useState(3);
+  const [isDarkMode, setIsDarkMode] = useState(false);
 
   const activeNodeRef = React.useRef(activeNode);
   const nodesRef = React.useRef(nodes);
@@ -196,6 +197,24 @@ export default function Home() {
         localStorage.removeItem('user');
       }
     }
+  }, []);
+
+  // Sync dark mode state with documentElement class list (MutationObserver)
+  useEffect(() => {
+    setIsDarkMode(document.documentElement.classList.contains('dark'));
+
+    const observer = new MutationObserver(() => {
+      setIsDarkMode(document.documentElement.classList.contains('dark'));
+    });
+
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class']
+    });
+
+    return () => {
+      observer.disconnect();
+    };
   }, []);
 
   const handleLogin = (user) => {
@@ -693,7 +712,7 @@ export default function Home() {
               <TrajectoryCharts
                 planPoints={(activeNode && activeNode.type === 'trajectory' && isActiveNodeUnderWorkingWell()) ? planPoints : chartPlanPoints}
                 actualPoints={(activeNode && activeNode.type === 'survey' && isActiveNodeUnderWorkingWell()) ? surveyPoints : chartSurveyPoints}
-                isDark={true}
+                isDark={isDarkMode}
                 unitSystem={workingUnits}
               />
             </>

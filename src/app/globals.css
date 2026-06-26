@@ -3,13 +3,22 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --background: #f8fafc;
+  --background: #f1f5f9; /* Softer Slate-100 background */
   --foreground: #0f172a;
 }
 
 .dark {
   --background: #090d16;
   --foreground: #f8fafc;
+}
+
+/* Softer background/card styling for light mode */
+html:not(.dark) .bg-slate-50 {
+  background-color: #f1f5f9 !important;
+}
+
+html:not(.dark) .bg-white {
+  background-color: #fafbfc !important;
 }
 
 @theme inline {

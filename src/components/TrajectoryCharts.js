@@ -45,7 +45,7 @@ export default function TrajectoryCharts({ planPoints = [], actualPoints = [], i
   const len = unitSystem === 'imperial' ? 'ft' : 'm';
 
   // Common styling tokens
-  const bgColor = isDark ? '#090d16' : '#ffffff';
+  const bgColor = isDark ? '#090d16' : '#fafbfc';
   const gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)';
   const textColor = isDark ? '#f8fafc' : '#0f172a';
   const planColor = '#10b981'; // Emerald Green
