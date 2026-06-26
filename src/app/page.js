@@ -216,11 +216,29 @@ export default function Home() {
         const data = await res.json();
         setNodes(data);
         
-        // Auto-select the first slot node if no node is currently active
+        // Auto-select the working project's first slot node if no node is currently active
         if (!activeNode && data.length > 0) {
-          const firstSlot = data.find(n => n.type === 'slot');
-          if (firstSlot) {
-            setActiveNode(firstSlot);
+          let workingWell = data.find(n => n.type === 'well' && (n.metadata?.is_working_project === true || n.metadata?.is_working_project === 'true'));
+          if (!workingWell) {
+            workingWell = data.find(n => n.type === 'well');
+          }
+
+          let targetNode = null;
+          if (workingWell) {
+            const slots = data.filter(n => n.parent_id === workingWell.id && n.type === 'slot');
+            if (slots.length > 0) {
+              targetNode = slots[0];
+            } else {
+              targetNode = workingWell;
+            }
+          }
+
+          if (!targetNode) {
+            targetNode = data.find(n => n.type === 'slot');
+          }
+
+          if (targetNode) {
+            setActiveNode(targetNode);
           }
         }
       }

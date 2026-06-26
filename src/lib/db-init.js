@@ -1,4 +1,3 @@
-import db from './database.js';
 import crypto from 'crypto';
 
 // Hash function helper using Node.js crypto
@@ -8,7 +7,7 @@ function hashPassword(password) {
   return `${salt}:${hash}`;
 }
 
-export function initDb() {
+export function initDb(db) {
   console.log("Initializing database tables...");
 
   // 1. Create Users table
