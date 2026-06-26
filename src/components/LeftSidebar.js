@@ -6,6 +6,51 @@ import {
   ChevronRight, ChevronDown, Plus, Trash2, Menu, ChevronLeft 
 } from 'lucide-react';
 
+// Isolated inline form component so typing does not trigger parent LeftSidebar re-renders
+function InlineAddForm({ placeholder, onAdd, onCancel }) {
+  const [name, setName] = useState('');
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      onAdd(name);
+    } else if (e.key === 'Escape') {
+      onCancel();
+    }
+  };
+
+  return (
+    <div 
+      onClick={(e) => e.stopPropagation()} 
+      onMouseDown={(e) => e.stopPropagation()} 
+      className="mt-1 pl-6 pr-2 py-1.5 bg-slate-50 dark:bg-slate-900 rounded-lg flex flex-col gap-1 border border-slate-200 dark:border-slate-800 animate-fadeIn"
+    >
+      <div className="flex gap-1">
+        <input
+          type="text"
+          autoFocus
+          placeholder={placeholder}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={handleKeyDown}
+          className="flex-1 text-xs py-0.5 px-1.5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 rounded outline-none text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-blue-500 transition-colors"
+        />
+        <button
+          onClick={() => onAdd(name)}
+          className="bg-blue-600 hover:bg-blue-500 text-white px-2 py-0.5 rounded text-[10px] transition font-medium cursor-pointer"
+        >
+          Add
+        </button>
+        <button
+          onClick={onCancel}
+          className="bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-650 dark:text-slate-300 px-1.5 py-0.5 rounded text-[10px] transition font-medium cursor-pointer"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function LeftSidebar({
   activeNodeId,
   onSelectNode,
@@ -21,6 +66,11 @@ export default function LeftSidebar({
   const [isResizing, setIsResizing] = useState(false);
   const isResizingRef = useRef(false);
   const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0, node: null });
+  const [activeAddForm, setActiveAddForm] = useState(null); // { key, parentId, type }
+
+  const handleToggleAddForm = (key, parentId, type) => {
+    setActiveAddForm(prev => (prev && prev.key === key) ? null : { key, parentId, type });
+  };
 
   useEffect(() => {
     const handleCloseMenu = () => {
@@ -385,12 +435,8 @@ export default function LeftSidebar({
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  const friendlyType = getFriendlyTypeName(childType);
-                  const name = prompt(`Enter new ${friendlyType} name:`);
-                  if (name && name.trim()) {
-                    const dbParentId = (node.type === 'plans_folder' || node.type === 'surveys_folder') ? node.parent_id : node.id;
-                    handleAddNode(dbParentId, childType, name);
-                  }
+                  const dbParentId = (node.type === 'plans_folder' || node.type === 'surveys_folder') ? node.parent_id : node.id;
+                  handleToggleAddForm(node.id, dbParentId, childType);
                 }}
                 title={`Add ${getFriendlyTypeName(childType)}`}
                 className="p-0.5 rounded text-slate-400 hover:text-blue-500 hover:bg-slate-200 dark:hover:bg-slate-700 transition"
@@ -409,6 +455,18 @@ export default function LeftSidebar({
             )}
           </div>
         </div>
+
+        {/* Inline sub-node creation form */}
+        {activeAddForm && activeAddForm.key === node.id && (
+          <InlineAddForm
+            placeholder={`New ${getFriendlyTypeName(activeAddForm.type)} name...`}
+            onAdd={(name) => {
+              handleAddNode(activeAddForm.parentId, activeAddForm.type, name);
+              setActiveAddForm(null);
+            }}
+            onCancel={() => setActiveAddForm(null)}
+          />
+        )}
 
         {/* Render children recursively */}
         {isExpanded && node.children && (
@@ -456,17 +514,25 @@ export default function LeftSidebar({
         <div className="p-2 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/50">
           <span className="text-[10px] text-slate-400">Add top-level Country</span>
           <button
-            onClick={() => {
-              const name = prompt("Enter new Country name:");
-              if (name && name.trim()) {
-                handleAddNode(null, 'country', name);
-              }
-            }}
+            onClick={() => handleToggleAddForm('root', null, 'country')}
             className="p-1 rounded text-slate-500 hover:text-blue-500 hover:bg-slate-200 dark:hover:bg-slate-700 transition"
           >
             <Plus className="h-3.5 w-3.5" />
           </button>
         </div>
+
+        {activeAddForm && activeAddForm.key === 'root' && (
+          <div className="m-2">
+            <InlineAddForm
+              placeholder="New Country name..."
+              onAdd={(name) => {
+                handleAddNode(null, 'country', name);
+                setActiveAddForm(null);
+              }}
+              onCancel={() => setActiveAddForm(null)}
+            />
+          </div>
+        )}
 
         {/* Hierarchy Tree Area */}
         <div className="flex-1 overflow-y-auto px-1 py-3 space-y-1">

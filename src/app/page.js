@@ -14,6 +14,8 @@ export default function Home() {
   const [activeNode, setActiveNode] = useState(null);
   const [planPoints, setPlanPoints] = useState([]);
   const [surveyPoints, setSurveyPoints] = useState([]);
+  const [chartPlanPoints, setChartPlanPoints] = useState([]);
+  const [chartSurveyPoints, setChartSurveyPoints] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
@@ -46,6 +48,14 @@ export default function Home() {
       if (res.ok) {
         const data = await res.json();
         setNodes(data);
+        
+        // Auto-select the first slot node if no node is currently active
+        if (!activeNode && data.length > 0) {
+          const firstSlot = data.find(n => n.type === 'slot');
+          if (firstSlot) {
+            setActiveNode(firstSlot);
+          }
+        }
       }
     } catch (e) {
       console.error("Failed to fetch nodes", e);
@@ -105,18 +115,26 @@ export default function Home() {
   const currentSlot = getCurrentSlot();
   const { plan: defPlan, survey: defSurvey } = getDefinitiveNodes(currentSlot);
 
-  // Load points for definitive plan & survey
+  // Load points for active/definitive tables and charts
   useEffect(() => {
-    const loadDefinitivePoints = async () => {
+    const loadAllPoints = async () => {
       if (!currentSlot) {
         setPlanPoints([]);
         setSurveyPoints([]);
+        setChartPlanPoints([]);
+        setChartSurveyPoints([]);
         return;
       }
 
-      if (defPlan) {
+      // Determine which node is loaded in the Plan Table
+      const planNodeToLoad = (activeNode && activeNode.type === 'trajectory') ? activeNode : defPlan;
+      // Determine which node is loaded in the Survey Table
+      const surveyNodeToLoad = (activeNode && activeNode.type === 'survey') ? activeNode : defSurvey;
+
+      // 1. Fetch Plan Table points
+      if (planNodeToLoad) {
         try {
-          const res = await fetch(`/api/surveys/${defPlan.id}`);
+          const res = await fetch(`/api/surveys/${planNodeToLoad.id}`);
           if (res.ok) {
             const data = await res.json();
             setPlanPoints(data);
@@ -131,9 +149,10 @@ export default function Home() {
         setPlanPoints([]);
       }
 
-      if (defSurvey) {
+      // 2. Fetch Survey Table points
+      if (surveyNodeToLoad) {
         try {
-          const res = await fetch(`/api/surveys/${defSurvey.id}`);
+          const res = await fetch(`/api/surveys/${surveyNodeToLoad.id}`);
           if (res.ok) {
             const data = await res.json();
             setSurveyPoints(data);
@@ -147,10 +166,46 @@ export default function Home() {
       } else {
         setSurveyPoints([]);
       }
+
+      // 3. Fetch Chart Plan points (always definitive plan)
+      if (defPlan) {
+        try {
+          const res = await fetch(`/api/surveys/${defPlan.id}`);
+          if (res.ok) {
+            const data = await res.json();
+            setChartPlanPoints(data);
+          } else {
+            setChartPlanPoints([]);
+          }
+        } catch (e) {
+          console.error("Failed to load chart plan points", e);
+          setChartPlanPoints([]);
+        }
+      } else {
+        setChartPlanPoints([]);
+      }
+
+      // 4. Fetch Chart Survey points (always definitive survey)
+      if (defSurvey) {
+        try {
+          const res = await fetch(`/api/surveys/${defSurvey.id}`);
+          if (res.ok) {
+            const data = await res.json();
+            setChartSurveyPoints(data);
+          } else {
+            setChartSurveyPoints([]);
+          }
+        } catch (e) {
+          console.error("Failed to load chart survey points", e);
+          setChartSurveyPoints([]);
+        }
+      } else {
+        setChartSurveyPoints([]);
+      }
     };
 
-    loadDefinitivePoints();
-  }, [currentSlot, defPlan?.id, defSurvey?.id, refreshTrigger]);
+    loadAllPoints();
+  }, [currentSlot, activeNode?.id, defPlan?.id, defSurvey?.id, refreshTrigger]);
 
   // Get active well settings
   const getWellSettings = () => {
@@ -243,16 +298,25 @@ export default function Home() {
                 <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-2xl shadow-sm space-y-3">
                   <div className="flex items-center justify-between">
                     <h3 className="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5 uppercase tracking-wider">
-                      <span className="text-emerald-500 font-extrabold text-sm">★</span>
-                      Definitive Plan: {defPlan ? defPlan.name : "None"}
+                      {(activeNode && activeNode.type === 'trajectory') ? (
+                        <>
+                          <span className="text-blue-500 font-extrabold text-sm">✎</span>
+                          Active Plan: {activeNode.name}
+                        </>
+                      ) : (
+                        <>
+                          <span className="text-emerald-500 font-extrabold text-sm">★</span>
+                          Definitive Plan: {defPlan ? defPlan.name : "None"}
+                        </>
+                      )}
                     </h3>
                   </div>
                   <ExcelGrid
-                    nodeId={defPlan?.id || null}
+                    nodeId={(activeNode && activeNode.type === 'trajectory') ? activeNode.id : (defPlan?.id || null)}
                     initialPoints={planPoints}
                     unitSystem={units}
                     vsDirection={vsDirection}
-                    tieIn={defPlan?.metadata?.tie_in || { md: 0, inc: 0, az: 0, tvd: 0, north: 0, east: 0 }}
+                    tieIn={((activeNode && activeNode.type === 'trajectory') ? activeNode.metadata?.tie_in : defPlan?.metadata?.tie_in) || { md: 0, inc: 0, az: 0, tvd: 0, north: 0, east: 0 }}
                     onChange={(newPoints) => {
                       setPlanPoints(newPoints);
                     }}
@@ -266,16 +330,25 @@ export default function Home() {
                 <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-2xl shadow-sm space-y-3">
                   <div className="flex items-center justify-between">
                     <h3 className="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5 uppercase tracking-wider">
-                      <span className="text-blue-500 font-extrabold text-sm">★</span>
-                      Definitive Survey: {defSurvey ? defSurvey.name : "None"}
+                      {(activeNode && activeNode.type === 'survey') ? (
+                        <>
+                          <span className="text-blue-500 font-extrabold text-sm">✎</span>
+                          Active Survey: {activeNode.name}
+                        </>
+                      ) : (
+                        <>
+                          <span className="text-blue-500 font-extrabold text-sm">★</span>
+                          Definitive Survey: {defSurvey ? defSurvey.name : "None"}
+                        </>
+                      )}
                     </h3>
                   </div>
                   <ExcelGrid
-                    nodeId={defSurvey?.id || null}
+                    nodeId={(activeNode && activeNode.type === 'survey') ? activeNode.id : (defSurvey?.id || null)}
                     initialPoints={surveyPoints}
                     unitSystem={units}
                     vsDirection={vsDirection}
-                    tieIn={defSurvey?.metadata?.tie_in || { md: 0, inc: 0, az: 0, tvd: 0, north: 0, east: 0 }}
+                    tieIn={((activeNode && activeNode.type === 'survey') ? activeNode.metadata?.tie_in : defSurvey?.metadata?.tie_in) || { md: 0, inc: 0, az: 0, tvd: 0, north: 0, east: 0 }}
                     onChange={(newPoints) => {
                       setSurveyPoints(newPoints);
                     }}
@@ -289,8 +362,8 @@ export default function Home() {
 
               {/* Trajectory Plots */}
               <TrajectoryCharts
-                planPoints={planPoints}
-                actualPoints={surveyPoints}
+                planPoints={chartPlanPoints}
+                actualPoints={chartSurveyPoints}
                 isDark={true}
                 unitSystem={units}
               />
