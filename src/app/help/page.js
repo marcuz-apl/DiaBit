@@ -36,7 +36,7 @@ export default function HelpPage() {
             Getting Started with DiaBit
           </h1>
           <p className="text-xs text-slate-650 dark:text-slate-400 leading-relaxed">
-            DiaBit is a comprehensive directional drilling survey utility that mirrors calculations found in Halliburton Landmark's COMPASS/EDT and Paradigm's SysDril. The app utilizes the **Minimum Curvature Method (MCM)** to map 3D survey coordinates based on discrete Measured Depth (MD), Inclination (Inc), and Azimuth (Az) entries.
+            DiaBit is a comprehensive directional drilling survey utility. The app utilizes the **Minimum Curvature Method (MCM)** to map 3D survey coordinates based on discrete Measured Depth (MD), Inclination (Inc), and Azimuth (Az) entries.
           </p>
         </section>
 
@@ -128,10 +128,10 @@ export default function HelpPage() {
         <section className="bg-slate-100 dark:bg-slate-900/50 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 text-xs text-center space-y-2">
           <h3 className="font-bold text-slate-800 dark:text-slate-200">Need advanced field deployment guides?</h3>
           <p className="text-slate-500 dark:text-slate-400 max-w-md mx-auto">
-            Contact the engineering team at Alfazen Inc. or view the official COMPASS user handbook for detailed field-to-grid declination corrections.
+            Contact the engineering team at Alfazen Inc. or view the official DiaBit user handbook for detailed field-to-grid declination corrections.
           </p>
           <a 
-            href="mailto:support@alfazen.com"
+            href="mailto:support@alfazen.org"
             className="inline-block mt-2 bg-blue-600 text-white font-semibold px-4 py-1.5 rounded-lg hover:bg-blue-500 transition"
           >
             Contact Support

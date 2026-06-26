@@ -290,10 +290,15 @@ export default function LeftSidebar({
 
   useEffect(() => {
     fetchNodes();
+    if (activeNodeId) {
+      setIsOpen(true);
+    }
   }, [refreshTrigger, activeNodeId]);
 
   // Autohide idle logic: 30 seconds
   useEffect(() => {
+    let hasInteracted = false;
+
     const resetIdleTimer = () => {
       // If sidebar is closed, don't trigger anything. If open, reset timer.
       if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
@@ -303,18 +308,23 @@ export default function LeftSidebar({
       }, 30000); // 30 seconds
     };
 
+    const handleUserActivity = () => {
+      hasInteracted = true;
+      resetIdleTimer();
+    };
+
     // Listen to mouse movement and clicks
-    window.addEventListener('mousemove', resetIdleTimer);
-    window.addEventListener('mousedown', resetIdleTimer);
-    window.addEventListener('keydown', resetIdleTimer);
+    window.addEventListener('mousemove', handleUserActivity);
+    window.addEventListener('mousedown', handleUserActivity);
+    window.addEventListener('keydown', handleUserActivity);
     
-    resetIdleTimer();
+    // We do NOT call resetIdleTimer() on mount to keep sidebars displayed on reload/refresh
 
     return () => {
       if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
-      window.removeEventListener('mousemove', resetIdleTimer);
-      window.removeEventListener('mousedown', resetIdleTimer);
-      window.removeEventListener('keydown', resetIdleTimer);
+      window.removeEventListener('mousemove', handleUserActivity);
+      window.removeEventListener('mousedown', handleUserActivity);
+      window.removeEventListener('keydown', handleUserActivity);
     };
   }, []);
 

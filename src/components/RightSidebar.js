@@ -33,6 +33,8 @@ export default function RightSidebar({
 
   // Autohide idle logic: 30 seconds of inactivity collapses the sidebar
   useEffect(() => {
+    let hasInteracted = false;
+
     const resetIdleTimer = () => {
       if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
       
@@ -41,18 +43,23 @@ export default function RightSidebar({
       }, 30000); // 30 seconds
     };
 
+    const handleUserActivity = () => {
+      hasInteracted = true;
+      resetIdleTimer();
+    };
+
     // Listen to mouse movement and inputs
-    window.addEventListener('mousemove', resetIdleTimer);
-    window.addEventListener('mousedown', resetIdleTimer);
-    window.addEventListener('keydown', resetIdleTimer);
+    window.addEventListener('mousemove', handleUserActivity);
+    window.addEventListener('mousedown', handleUserActivity);
+    window.addEventListener('keydown', handleUserActivity);
     
-    resetIdleTimer();
+    // We do NOT call resetIdleTimer() on mount to keep sidebars displayed on reload/refresh
 
     return () => {
       if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
-      window.removeEventListener('mousemove', resetIdleTimer);
-      window.removeEventListener('mousedown', resetIdleTimer);
-      window.removeEventListener('keydown', resetIdleTimer);
+      window.removeEventListener('mousemove', handleUserActivity);
+      window.removeEventListener('mousedown', handleUserActivity);
+      window.removeEventListener('keydown', handleUserActivity);
     };
   }, []);
 
@@ -63,14 +70,25 @@ export default function RightSidebar({
       return;
     }
 
-    // Climb: Active Node (Trajectory/Survey) -> Parent (Slot) -> Parent (Well)
+    // Set sidebar open when activeNode changes
+    setIsOpen(true);
+
+    // Climb: Active Node -> Parent -> Well
     const active = nodes.find(n => n.id === activeNode.id);
     if (!active) return;
 
-    const slotNode = nodes.find(n => n.id === active.parent_id);
-    if (!slotNode) return;
+    let well = null;
+    if (active.type === 'trajectory' || active.type === 'survey') {
+      const slotNode = nodes.find(n => n.id === active.parent_id);
+      if (slotNode) {
+        well = nodes.find(n => n.id === slotNode.parent_id);
+      }
+    } else if (active.type === 'slot') {
+      well = nodes.find(n => n.id === active.parent_id);
+    } else if (active.type === 'well') {
+      well = active;
+    }
 
-    const well = nodes.find(n => n.id === slotNode.parent_id);
     if (well && well.type === 'well') {
       setWellNode(well);
       
@@ -83,15 +101,27 @@ export default function RightSidebar({
       setEasting(meta.easting || 0);
       setNorthing(meta.northing || 0);
 
-      // Trajectory specific tie-in settings
-      const trajMeta = active.metadata || {};
-      const tie = trajMeta.tie_in || { md: 0, inc: 0, az: 0, tvd: 0, north: 0, east: 0 };
-      setTieInMd(tie.md || 0);
-      setTieInInc(tie.inc || 0);
-      setTieInAz(tie.az || 0);
-      setTieInTvd(tie.tvd || 0);
-      setTieInNorth(tie.north || 0);
-      setTieInEast(tie.east || 0);
+      // Trajectory specific tie-in settings (only applicable to trajectory or survey)
+      if (active.type === 'trajectory' || active.type === 'survey') {
+        const trajMeta = active.metadata || {};
+        const tie = trajMeta.tie_in || { md: 0, inc: 0, az: 0, tvd: 0, north: 0, east: 0 };
+        setTieInMd(tie.md || 0);
+        setTieInInc(tie.inc || 0);
+        setTieInAz(tie.az || 0);
+        setTieInTvd(tie.tvd || 0);
+        setTieInNorth(tie.north || 0);
+        setTieInEast(tie.east || 0);
+      } else {
+        // Clear tie-in settings for well/slot levels
+        setTieInMd(0);
+        setTieInInc(0);
+        setTieInAz(0);
+        setTieInTvd(0);
+        setTieInNorth(0);
+        setTieInEast(0);
+      }
+    } else {
+      setWellNode(null);
     }
   }, [activeNode, nodes]);
 
@@ -119,25 +149,27 @@ export default function RightSidebar({
 
       if (!wellRes.ok) throw new Error("Failed to update well settings");
 
-      // 2. Update Trajectory/Survey tie-in metadata
-      const trajMetaUpdate = {
-        tie_in: {
-          md: parseFloat(tieInMd) || 0,
-          inc: parseFloat(tieInInc) || 0,
-          az: parseFloat(tieInAz) || 0,
-          tvd: parseFloat(tieInTvd) || 0,
-          north: parseFloat(tieInNorth) || 0,
-          east: parseFloat(tieInEast) || 0
-        }
-      };
+      // 2. Update Trajectory/Survey tie-in metadata (if activeNode is trajectory/survey)
+      if (activeNode.type === 'trajectory' || activeNode.type === 'survey') {
+        const trajMetaUpdate = {
+          tie_in: {
+            md: parseFloat(tieInMd) || 0,
+            inc: parseFloat(tieInInc) || 0,
+            az: parseFloat(tieInAz) || 0,
+            tvd: parseFloat(tieInTvd) || 0,
+            north: parseFloat(tieInNorth) || 0,
+            east: parseFloat(tieInEast) || 0
+          }
+        };
 
-      const trajRes = await fetch(`/api/nodes/${activeNode.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ metadata: trajMetaUpdate })
-      });
+        const trajRes = await fetch(`/api/nodes/${activeNode.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ metadata: trajMetaUpdate })
+        });
 
-      if (!trajRes.ok) throw new Error("Failed to update trajectory settings");
+        if (!trajRes.ok) throw new Error("Failed to update trajectory settings");
+      }
 
       // Trigger app refresh
       onUpdateSettings();
@@ -285,75 +317,77 @@ export default function RightSidebar({
               </div>
 
               {/* Section 3: Tie-in Point */}
-              <div className="space-y-2">
-                <div className="flex items-center gap-1.5 font-semibold text-slate-800 dark:text-slate-200 uppercase text-[10px] tracking-wider">
-                  <Sliders className="h-3.5 w-3.5 text-blue-400" />
-                  Tie-in Station (Reference)
-                </div>
+              {(activeNode.type === 'trajectory' || activeNode.type === 'survey') && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-1.5 font-semibold text-slate-800 dark:text-slate-200 uppercase text-[10px] tracking-wider">
+                    <Sliders className="h-3.5 w-3.5 text-blue-400" />
+                    Tie-in Station (Reference)
+                  </div>
 
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-[10px] text-slate-400">MD ({lenLabel})</label>
-                    <input
-                      type="number"
-                      value={tieInMd}
-                      onChange={(e) => setTieInMd(e.target.value)}
-                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 focus:border-blue-500 outline-none text-slate-855 dark:text-slate-100 text-right"
-                    />
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[10px] text-slate-400">MD ({lenLabel})</label>
+                      <input
+                        type="number"
+                        value={tieInMd}
+                        onChange={(e) => setTieInMd(e.target.value)}
+                        className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 focus:border-blue-500 outline-none text-slate-855 dark:text-slate-100 text-right"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-slate-400">TVD ({lenLabel})</label>
+                      <input
+                        type="number"
+                        value={tieInTvd}
+                        onChange={(e) => setTieInTvd(e.target.value)}
+                        className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 focus:border-blue-500 outline-none text-slate-855 dark:text-slate-100 text-right"
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-[10px] text-slate-400">TVD ({lenLabel})</label>
-                    <input
-                      type="number"
-                      value={tieInTvd}
-                      onChange={(e) => setTieInTvd(e.target.value)}
-                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 focus:border-blue-500 outline-none text-slate-855 dark:text-slate-100 text-right"
-                    />
-                  </div>
-                </div>
 
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-[10px] text-slate-400">Inc (deg)</label>
-                    <input
-                      type="number"
-                      value={tieInInc}
-                      onChange={(e) => setTieInInc(e.target.value)}
-                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 focus:border-blue-500 outline-none text-slate-855 dark:text-slate-100 text-right"
-                    />
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[10px] text-slate-400">Inc (deg)</label>
+                      <input
+                        type="number"
+                        value={tieInInc}
+                        onChange={(e) => setTieInInc(e.target.value)}
+                        className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 focus:border-blue-500 outline-none text-slate-855 dark:text-slate-100 text-right"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-slate-400">Az (deg)</label>
+                      <input
+                        type="number"
+                        value={tieInAz}
+                        onChange={(e) => setTieInAz(e.target.value)}
+                        className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 focus:border-blue-500 outline-none text-slate-855 dark:text-slate-100 text-right"
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-[10px] text-slate-400">Az (deg)</label>
-                    <input
-                      type="number"
-                      value={tieInAz}
-                      onChange={(e) => setTieInAz(e.target.value)}
-                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 focus:border-blue-500 outline-none text-slate-855 dark:text-slate-100 text-right"
-                    />
-                  </div>
-                </div>
 
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-[10px] text-slate-400">Northing ({lenLabel})</label>
-                    <input
-                      type="number"
-                      value={tieInNorth}
-                      onChange={(e) => setTieInNorth(e.target.value)}
-                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 focus:border-blue-500 outline-none text-slate-855 dark:text-slate-100 text-right"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-slate-400">Easting ({lenLabel})</label>
-                    <input
-                      type="number"
-                      value={tieInEast}
-                      onChange={(e) => setTieInEast(e.target.value)}
-                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 focus:border-blue-500 outline-none text-slate-855 dark:text-slate-100 text-right"
-                    />
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[10px] text-slate-400">Northing ({lenLabel})</label>
+                      <input
+                        type="number"
+                        value={tieInNorth}
+                        onChange={(e) => setTieInNorth(e.target.value)}
+                        className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 focus:border-blue-500 outline-none text-slate-855 dark:text-slate-100 text-right"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-slate-400">Easting ({lenLabel})</label>
+                      <input
+                        type="number"
+                        value={tieInEast}
+                        onChange={(e) => setTieInEast(e.target.value)}
+                        className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 focus:border-blue-500 outline-none text-slate-855 dark:text-slate-100 text-right"
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
 
             <button

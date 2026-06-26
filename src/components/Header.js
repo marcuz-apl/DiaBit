@@ -2,12 +2,13 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Sun, Moon, User, LogOut, Disc, HelpCircle, Info } from 'lucide-react';
+import { Sun, Moon, User, LogOut, HelpCircle, Info } from 'lucide-react';
 import pkg from '../../package.json';
 
 export default function Header({ currentUser, onLogin, onLogout }) {
   const [isDark, setIsDark] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showAboutModal, setShowAboutModal] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -77,19 +78,22 @@ export default function Header({ currentUser, onLogin, onLogout }) {
               <HelpCircle className="h-4 w-4" />
               Help
             </Link>
-            <Link 
-              href="/about"
-              className="flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-blue-500 dark:text-slate-400 dark:hover:text-blue-400 transition"
+            <button 
+              onClick={() => setShowAboutModal(true)}
+              className="flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-blue-500 dark:text-slate-400 dark:hover:text-blue-400 transition cursor-pointer"
             >
               <Info className="h-4 w-4" />
               About
-            </Link>
+            </button>
           </div>
 
           {/* Center: Logo and App Name */}
           <div className="flex items-center gap-2 select-none">
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-600 text-white shadow-md dark:bg-blue-600">
-              <Disc className="h-4 w-4 animate-spin-slow" />
+              <svg className="h-4 w-4 animate-spin-slow" viewBox="0 0 24 24" fill="none" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="9" stroke="#ef4444" fill="none" />
+                <circle cx="12" cy="12" r="2.5" stroke="#ef4444" fill="#ef4444" />
+              </svg>
             </div>
             <div className="flex items-baseline gap-1">
               <span className="font-extrabold text-base tracking-tight bg-gradient-to-r from-blue-600 to-indigo-500 bg-clip-text text-transparent dark:from-blue-400 dark:to-indigo-300">
@@ -209,6 +213,53 @@ export default function Header({ currentUser, onLogin, onLogout }) {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* About Modal */}
+      {showAboutModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/65 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-slate-900 text-white border border-slate-800 rounded-2xl p-6 max-w-sm w-full relative shadow-2xl flex flex-col items-center text-center animate-in fade-in zoom-in-95 duration-200">
+            {/* Logo */}
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-600 shadow-lg mb-4">
+              <svg className="h-10 w-10 animate-spin-slow" viewBox="0 0 24 24" fill="none" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="9" stroke="#ef4444" fill="none" />
+                <circle cx="12" cy="12" r="2.5" stroke="#ef4444" fill="#ef4444" />
+              </svg>
+            </div>
+
+            {/* Product Name & Version */}
+            <h2 className="text-lg font-bold tracking-tight">DiaBit Directional Surveying</h2>
+            <span className="text-[10px] font-semibold text-slate-400 mt-1">
+              Version {pkg.version}
+            </span>
+
+            {/* Intro */}
+            <p className="text-xs text-slate-300 leading-relaxed mt-4">
+              DiaBit is a lightweight directional surveying calculations suite designed for oil & gas wellbore planning and tracking. Using the Minimum Curvature Method (MCM), it provides real-time trajectory processing and 3D visualization.
+            </p>
+
+            {/* White Separator Line */}
+            <hr className="w-full border-white/20 my-4" />
+
+            {/* Copyright */}
+            <div className="text-[10px] text-slate-450 font-medium">
+              © {new Date().getFullYear()} Alfazen Inc. All rights reserved
+            </div>
+
+            {/* Licensing Note */}
+            <div className="text-[10px] text-slate-400 mt-2.5 max-w-xs leading-normal">
+              For sales or corporate licensing agreements, please contact <a href="mailto:licensing@alfazen.org" className="text-blue-400 hover:text-blue-300 hover:underline">licensing@alfazen.org</a>
+            </div>
+
+            {/* OK Button */}
+            <button
+              onClick={() => setShowAboutModal(false)}
+              className="mt-6 w-full rounded-lg bg-blue-600 hover:bg-blue-500 py-2 text-xs font-semibold text-white shadow transition cursor-pointer"
+            >
+              OK
+            </button>
           </div>
         </div>
       )}

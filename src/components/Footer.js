@@ -38,7 +38,7 @@ export default function Footer() {
           {/* Right Corner: Social Links */}
           <div className="flex items-center gap-4 text-slate-400 dark:text-slate-500">
             <a 
-              href="https://www.alfazen.com" 
+              href="https://www.alfazen.org" 
               target="_blank" 
               rel="noopener noreferrer" 
               className="hover:text-blue-500 dark:hover:text-blue-400 transition"
@@ -47,7 +47,7 @@ export default function Footer() {
               <Globe className="h-4 w-4" />
             </a>
             <a 
-              href="https://twitter.com" 
+              href="https://x.com/alfazeninc/" 
               target="_blank" 
               rel="noopener noreferrer" 
               className="hover:text-sky-400 dark:hover:text-sky-400 transition"
@@ -56,7 +56,7 @@ export default function Footer() {
               <Twitter className="h-4 w-4" />
             </a>
             <a 
-              href="https://linkedin.com" 
+              href="https://linkedin.com/in/alfazeninc/" 
               target="_blank" 
               rel="noopener noreferrer" 
               className="hover:text-blue-700 dark:hover:text-blue-500 transition"
