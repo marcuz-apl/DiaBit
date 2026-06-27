@@ -593,14 +593,18 @@ export default function RightSidebar({
                   </select>
                 </div>
 
-                <div className="space-y-1">
+                <div className="space-y-1 group relative">
                   <label className="block text-[10px] text-slate-400">Survey Computation Method</label>
                   <select
                     value={surveyMethod}
-                    disabled
-                    className="w-full bg-slate-100 dark:bg-slate-805 border border-slate-300 dark:border-slate-700 rounded px-2.5 py-1.5 focus:border-blue-500 outline-none text-slate-500 dark:text-slate-400 cursor-not-allowed"
+                    onChange={(e) => setSurveyMethod('Minimum Curvature / Lubinski')}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-2.5 py-1.5 focus:border-blue-500 outline-none text-slate-800 dark:text-slate-100"
                   >
-                    <option value="Minimum Curvature / Lubinski">Minimum Curvature / Lubinski</option>
+                    <option value="Minimum Curvature / Lubinski">Minimum Curvature / Lubinski (Default)</option>
+                    <option value="Radius of Curvature" disabled>Radius of Curvature (Unsupported)</option>
+                    <option value="Average Angle" disabled>Average Angle (Unsupported)</option>
+                    <option value="Balanced Tangential" disabled>Balanced Tangential (Unsupported)</option>
+                    <option value="Tangential" disabled>Tangential (Unsupported)</option>
                   </select>
                 </div>
 
