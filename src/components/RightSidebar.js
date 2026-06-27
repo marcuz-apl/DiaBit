@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Settings, Save, Map, Compass, Sliders, Menu, ChevronRight, ChevronLeft } from 'lucide-react';
+import { Settings, Save, Map, Compass, Sliders, Menu, ChevronRight, ChevronLeft, ArrowDown } from 'lucide-react';
 
 export default function RightSidebar({
   activeNode,
@@ -270,10 +270,36 @@ export default function RightSidebar({
       } else {
         throw new Error("API returned an error");
       }
-    } catch (err) {
-      setSaveMessage("Failed to fetch magnetic parameters");
+    } catch (e) {
+      setSaveMessage("Failed to fetch magnetic data. Check coordinates.");
       setSaveError(true);
-      setTimeout(() => setSaveMessage(null), 3000);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleAutofillGravity = async () => {
+    if (!latitude) {
+      alert("Please ensure Latitude is computed first.");
+      return;
+    }
+    try {
+      setIsSaving(true);
+      const url = `/api/geo?type=gravity&lat=${latitude}`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.gravity !== undefined) setGravityField(data.gravity);
+        setSaveMessage(`Gravity parameters fetched successfully`);
+        setSaveError(false);
+        setTimeout(() => setSaveMessage(null), 3000);
+        setTimeout(handleSaveSettings, 500);
+      } else {
+        throw new Error("API returned an error");
+      }
+    } catch (e) {
+      setSaveMessage("Failed to fetch gravity data.");
+      setSaveError(true);
     } finally {
       setIsSaving(false);
     }
@@ -301,10 +327,7 @@ export default function RightSidebar({
     return () => { cancelled = true; clearTimeout(t); };
   }, [latitude, elevation]);
 
-  const handleAutofillGravity = () => {
-    // This is handled automatically by the useEffect above now.
-    // Retaining this for UI button mapping if it still exists.
-  };
+
 
   const handleSaveSettings = async () => {
     if (!wellNode || !activeNode) return;
@@ -663,23 +686,39 @@ export default function RightSidebar({
                 </div>
               </div>
 
-              {/* Section 4: Geomagnetic & Gravity Parameters */}
-              <div className="space-y-2">
-                <div className="flex items-center gap-1.5 font-semibold text-slate-800 dark:text-slate-200 uppercase text-[10px] tracking-wider">
-                  <Compass className="h-3.5 w-3.5 text-blue-400" />
-                  Geomagnetic & Gravity
+              {/* Section 4: Geomagnetic Reference */}
+              <div className="space-y-2 pt-2 border-t border-slate-200 dark:border-slate-800">
+                <div className="flex items-center justify-between font-semibold text-slate-800 dark:text-slate-200 uppercase text-[10px] tracking-wider mb-2">
+                  <div className="flex items-center gap-1.5">
+                    <Compass className="h-3.5 w-3.5 text-indigo-500" />
+                    Geomagnetic Reference
+                  </div>
+                  {magneticModel && (
+                    <button
+                      type="button"
+                      onClick={handleAutofillMagnetic}
+                      disabled={isSaving}
+                      className="text-[9px] flex items-center gap-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 dark:text-indigo-400 px-2 py-0.5 rounded transition"
+                    >
+                      <Map className="h-3 w-3" />
+                      {isSaving ? 'Fetching...' : 'Auto-Fetch'}
+                    </button>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="block text-[10px] text-slate-400">Mag Declination (D)</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={declination}
-                      onChange={(e) => setDeclination(e.target.value)}
-                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 focus:border-blue-500 outline-none text-slate-855 dark:text-slate-100 text-right"
-                    />
+                    <label className="block text-[10px] text-slate-400 font-normal">Declination Model</label>
+                    <select
+                      value={magneticModel}
+                      onChange={(e) => setMagneticModel(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 focus:border-blue-500 outline-none text-slate-800 dark:text-slate-100"
+                    >
+                      <option value="">-- Select Model --</option>
+                      {magneticModels.map(m => (
+                        <option key={m.name} value={m.name}>{m.name}</option>
+                      ))}
+                    </select>
                   </div>
                   <div>
                     <label className="block text-[10px] text-slate-400 font-normal">Declination Date</label>
@@ -695,45 +734,17 @@ export default function RightSidebar({
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <div className="flex justify-between items-center mb-0.5">
-                      <label className="block text-[10px] text-slate-400 font-normal">Declination Model</label>
-                      {magneticModel && (
-                        <button
-                          type="button"
-                          onClick={handleAutofillMagnetic}
-                          disabled={isSaving}
-                          className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-500/30 rounded text-[10px] font-medium transition-colors"
-                        >
-                          <Map className="h-3.5 w-3.5" />
-                          {isSaving ? 'Fetching...' : 'Fetch from Coordinates'}
-                        </button>
-                      )}
-                    </div>
-                    <select
-                      value={magneticModel}
-                      onChange={(e) => setMagneticModel(e.target.value)}
-                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 focus:border-blue-500 outline-none text-slate-800 dark:text-slate-100"
-                    >
-                      <option value="">-- Select Model --</option>
-                      {magneticModels.map(m => (
-                        <option key={m.name} value={m.name}>{m.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-slate-400">Mag Field (B_ref, nT)</label>
+                    <label className="block text-[10px] text-slate-400">Mag Declination (D)</label>
                     <input
                       type="number"
-                      value={magneticField}
-                      onChange={(e) => setMagneticField(e.target.value)}
+                      step="0.01"
+                      value={declination}
+                      onChange={(e) => setDeclination(e.target.value)}
                       className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 focus:border-blue-500 outline-none text-slate-855 dark:text-slate-100 text-right"
                     />
                   </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="block text-[10px] text-slate-400 font-normal">Magnetic Dip Angle</label>
+                    <label className="block text-[10px] text-slate-400">Magnetic Dip Angle</label>
                     <input
                       type="number"
                       step="0.1"
@@ -742,44 +753,65 @@ export default function RightSidebar({
                       className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 focus:border-blue-500 outline-none text-slate-855 dark:text-slate-100 text-right"
                     />
                   </div>
-                  <div>
-                      <div className="flex items-center justify-between mb-0.5">
-                        <label className="text-[10px] text-slate-400">Strength (mGal)</label>
-                        {latitude !== 0 && <span className="text-[9px] text-amber-500">↻ auto</span>}
-                      </div>
-                      <input
-                        type="number"
-                        step="0.001"
-                        value={gravityField}
-                        onChange={(e) => setGravityField(e.target.value)}
-                        className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-2.5 py-1.5 focus:border-blue-500 outline-none text-slate-850 dark:text-slate-100 text-xs text-right font-mono"
-                      />
-                    </div>
                 </div>
 
                 <div>
-                  <div className="flex justify-between items-center mb-0.5">
-                    <label className="block text-[10px] text-slate-400 font-normal">Gravity Model</label>
-                    {gravityModel && (
-                      <button
-                        type="button"
-                        onClick={() => fetchGeoData('gravity')}
-                        className="text-[9px] text-blue-500 hover:text-blue-400 font-bold cursor-pointer"
-                      >
-                        Autofill
-                      </button>
-                    )}
+                  <label className="block text-[10px] text-slate-400">Total Mag Field (B_ref, nT)</label>
+                  <input
+                    type="number"
+                    value={magneticField}
+                    onChange={(e) => setMagneticField(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 focus:border-blue-500 outline-none text-slate-855 dark:text-slate-100 text-right"
+                  />
+                </div>
+              </div>
+
+              {/* Section 5: Gravity Reference */}
+              <div className="space-y-2 pt-2 border-t border-slate-200 dark:border-slate-800">
+                <div className="flex items-center justify-between font-semibold text-slate-800 dark:text-slate-200 uppercase text-[10px] tracking-wider mb-2">
+                  <div className="flex items-center gap-1.5">
+                    <ArrowDown className="h-3.5 w-3.5 text-amber-500" />
+                    Gravity Reference
                   </div>
-                  <select
-                    value={gravityModel}
-                    onChange={(e) => setGravityModel(e.target.value)}
-                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-2.5 py-1.5 focus:border-blue-500 outline-none text-slate-800 dark:text-slate-100"
-                  >
-                    <option value="">-- Select Model --</option>
-                    {gravityModels.map(m => (
-                      <option key={m.name} value={m.name}>{m.name}</option>
-                    ))}
-                  </select>
+                  {gravityModel && (
+                    <button
+                      type="button"
+                      onClick={handleAutofillGravity}
+                      className="text-[9px] flex items-center gap-1 bg-amber-50 hover:bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:hover:bg-amber-900/50 dark:text-amber-400 px-2 py-0.5 rounded transition"
+                    >
+                      <Map className="h-3 w-3" />
+                      Auto-Fetch
+                    </button>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[10px] text-slate-400 font-normal">Gravity Model</label>
+                    <select
+                      value={gravityModel}
+                      onChange={(e) => setGravityModel(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-2.5 py-1.5 focus:border-blue-500 outline-none text-slate-800 dark:text-slate-100"
+                    >
+                      <option value="">-- Select Model --</option>
+                      {gravityModels.map(m => (
+                        <option key={m.name} value={m.name}>{m.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between mb-0.5">
+                      <label className="text-[10px] text-slate-400">Strength (mGal)</label>
+                      {latitude !== 0 && <span className="text-[9px] text-amber-500">↻ auto</span>}
+                    </div>
+                    <input
+                      type="number"
+                      step="0.001"
+                      value={gravityField}
+                      onChange={(e) => setGravityField(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-2.5 py-1.5 focus:border-blue-500 outline-none text-slate-850 dark:text-slate-100 text-xs text-right font-mono"
+                    />
+                  </div>
                 </div>
               </div>
 

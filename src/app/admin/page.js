@@ -8,7 +8,10 @@ export default function AdminPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   
-  // Users list & creation form state
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+  // Stats state & creation form state
   const [users, setUsers] = useState([]);
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -103,7 +106,10 @@ export default function AdminPage() {
           if (res.ok) setCrsList(await res.json());
         } else if (activeTab === 'field-models' && modelsList.length === 0) {
           const res = await fetch('/api/models');
-          if (res.ok) setModelsList(await res.json());
+          if (res.ok) {
+            const data = await res.json();
+            setModelsList([...(data.magnetic || []), ...(data.gravity || [])]);
+          }
         }
       } catch (e) {
         console.error("Failed to load reference data", e);
@@ -233,12 +239,9 @@ export default function AdminPage() {
     } catch (err) {
       alert(err.message);
     }
+
   };
 
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-
-  // If unauthorized
   if (!isAdmin) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-center p-6">
