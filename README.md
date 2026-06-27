@@ -7,12 +7,13 @@
 ## Key Features
 
 1. **Precision MCM Calculations**: Instant, automatic calculations of TVD, Northing, Easting, Dogleg Severity (DLS), Vertical Section (VS), and Closure.
-2. **Dynamic Project Registry**: Tree-style navigation hierarchy organizing data from Country down to States, Basins, Fields, Wells, Slots, Trajectory Plans, and Deviation Surveys.
-3. **Interactive Excel Grid**: High-performance spreadsheet interface supporting inline edits, row insertions/appenditions/deletions, and automatic recalculations.
-4. **Planned vs. Real-Time Overlay Charts**: Dynamic 3D Trajectory, 2D Plan, and Vertical Section plots rendering planned trajectories alongside actual deviation surveys.
-5. **CSV Integration**: Seamless import and export of survey stations in CSV spreadsheets.
-6. **Admin Panel**: Complete user account administration and database node management.
-7. **Sleek Light/Dark Themes**: Glassmorphism dashboard layout with auto-hiding navigation tree when idle (30 seconds).
+2. **Advanced Geo-Magnetic Modeling**: Seamless fetching of magnetic declination, dip, and total field via NOAA HDGM API, with a robust offline fallback using the full `geomagnetism` WMM2025 dataset (n=12).
+3. **Dynamic Project Registry**: Tree-style navigation hierarchy organizing data from Country down to States, Basins, Fields, Wells, Slots, Trajectory Plans, and Deviation Surveys.
+4. **Interactive Excel Grid**: High-performance spreadsheet interface supporting inline edits, row insertions/appenditions/deletions, and automatic recalculations.
+5. **Planned vs. Real-Time Overlay Charts**: Dynamic 3D Trajectory, 2D Plan, and Vertical Section plots rendering planned trajectories alongside actual deviation surveys.
+6. **CSV Integration**: Seamless import and export of survey stations in CSV spreadsheets.
+7. **Admin Panel**: Complete user account administration, database node management, and CRS / Datum Shift registries.
+8. **Sleek Light/Dark Themes**: Glassmorphism dashboard layout with auto-hiding navigation tree when idle (30 seconds).
 
 ---
 
@@ -44,7 +45,7 @@
    ```bash
    node src/lib/run-db-init.mjs
    ```
-   *This creates the database directory `./data/`, builds the schema, and seeds default profiles and a sample Texas Permian Basin well registry.*
+   *This creates the database directory `./data/`, builds the schema, and seeds default profiles and sample Texas Permian Basin / Canadian well registries.*
 
 3. **Start the Local Development Server**:
    ```bash

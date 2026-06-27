@@ -385,6 +385,82 @@ export function initDb(db) {
       insertPoint.run(surveyId, pt.seq, pt.name || '', pt.md, pt.inc, pt.az, pt.tvd, pt.north, pt.east, pt.dls, pt.vs);
     }
 
+    // --- SEED CANADA EXAMPLE ---
+    // 1. Canada
+    const canadaId = insertNode.run(null, 'Canada', 'country', JSON.stringify({})).lastInsertRowid;
+    // 2. Alberta
+    const albertaId = insertNode.run(canadaId, 'Alberta', 'state', JSON.stringify({})).lastInsertRowid;
+    // 3. Montney Basin
+    const montneyId = insertNode.run(albertaId, 'Montney Basin', 'basin', JSON.stringify({})).lastInsertRowid;
+    // 4. Peace River Field
+    const peaceId = insertNode.run(montneyId, 'Peace River Field', 'field', JSON.stringify({})).lastInsertRowid;
+    // 5. Well-MB1 (Montney Horizontal)
+    const wellCanId = insertNode.run(peaceId, 'Well-MB1', 'well', JSON.stringify({
+      latitude: 56.2,
+      longitude: -117.5,
+      easting: 468900,
+      northing: 6228300,
+      elevation: 705, // meters
+      vs_direction: 315.0, // degrees (NW)
+      units: 'metric',
+      crs: "UTM Zone 11N",
+      grid_convergence: 1.85,
+      scale_factor: 0.9996,
+      survey_method: "Minimum Curvature / Lubinski",
+      datum: "KB",
+      ref_elevation: 705,
+      gl_elevation: 700,
+      declination: 17.5, // approx declination
+      gravity_field: 981900, // typical mGal
+      gravity_model: "WGS84 / Somigliana",
+      magnetic_field: 56500, // nT
+      magnetic_dip: 76.5,
+      declination_date: "2026-06-26",
+      magnetic_model: "HDGM 2025",
+      north_reference: "true",
+      grid_convergence_used: true
+    })).lastInsertRowid;
+
+    // 6. Slot-MB1
+    const slotCanId = insertNode.run(wellCanId, 'Slot-MB1', 'slot', JSON.stringify({ offset_x: 0, offset_y: 0 })).lastInsertRowid;
+
+    // 7. Trajectory (Plan)
+    const planCanId = insertNode.run(slotCanId, 'Montney Horizontal Plan', 'trajectory', JSON.stringify({
+      is_planned: true,
+      tie_in: { md: 0, inc: 0, az: 0, tvd: 0, north: 0, east: 0 }
+    })).lastInsertRowid;
+
+    // 8. Survey
+    const surveyCanId = insertNode.run(slotCanId, 'Montney MWD Actual', 'survey', JSON.stringify({
+      is_planned: false,
+      tie_in: { md: 0, inc: 0, az: 0, tvd: 0, north: 0, east: 0 }
+    })).lastInsertRowid;
+
+    const planCanPoints = [
+      { seq: 0, md: 0, inc: 0, az: 0, tvd: 0, north: 0, east: 0, dls: 0, vs: 0 },
+      { seq: 1, md: 1000, inc: 0, az: 0, tvd: 1000, north: 0, east: 0, dls: 0, vs: 0 },
+      { seq: 2, md: 2000, inc: 0, az: 0, tvd: 2000, north: 0, east: 0, dls: 0, vs: 0 },
+      { seq: 3, md: 2200, inc: 20, az: 315, tvd: 2195.4, north: 24.6, east: -24.6, dls: 3.0, vs: 34.8 },
+      { seq: 4, md: 2500, inc: 50, az: 315, tvd: 2434.6, north: 137.4, east: -137.4, dls: 3.0, vs: 194.3 },
+      { seq: 5, md: 2900, inc: 90, az: 315, tvd: 2568.1, north: 410.7, east: -410.7, dls: 3.0, vs: 580.9 },
+      { seq: 6, md: 4000, inc: 90, az: 315, tvd: 2568.1, north: 1188.5, east: -1188.5, dls: 0, vs: 1680.9 }
+    ];
+
+    for (const pt of planCanPoints) {
+      insertPoint.run(planCanId, pt.seq, pt.name || '', pt.md, pt.inc, pt.az, pt.tvd, pt.north, pt.east, pt.dls, pt.vs);
+    }
+
+    const surveyCanPoints = [
+      { seq: 0, name: 'TIE-IN', md: 0, inc: 0, az: 0, tvd: 0, north: 0, east: 0, dls: 0, vs: 0 },
+      { seq: 1, name: '', md: 1000, inc: 0.2, az: 30, tvd: 1000, north: 1.5, east: 0.8, dls: 0.02, vs: 0.5 },
+      { seq: 2, name: '', md: 2000, inc: 0.5, az: 35, tvd: 2000, north: 5.4, east: 3.5, dls: 0.01, vs: 1.3 },
+      { seq: 3, name: 'KOP', md: 2200, inc: 19.5, az: 314, tvd: 2195.5, north: 28.5, east: -21.4, dls: 2.8, vs: 35.2 }
+    ];
+
+    for (const pt of surveyCanPoints) {
+      insertPoint.run(surveyCanId, pt.seq, pt.name || '', pt.md, pt.inc, pt.az, pt.tvd, pt.north, pt.east, pt.dls, pt.vs);
+    }
+
     console.log("Default tree hierarchy seeded successfully.");
   }
 }
