@@ -18,7 +18,24 @@ const Plot = dynamic(() => import('react-plotly.js'), {
 
 export default function TrajectoryCharts({ planPoints = [], actualPoints = [], isDark = true, unitSystem = 'metric' }) {
   const [mounted, setMounted] = useState(false);
+  const [fullScreenId, setFullScreenId] = useState(null);
   const containerRef = useRef(null);
+
+  const getContainerClass = (id) => {
+    const base = "rounded-xl border border-slate-200 bg-white shadow-md dark:border-slate-800 dark:bg-slate-900/60 dark:backdrop-blur-md flex flex-col transition-all duration-300";
+    if (fullScreenId === id) {
+      return `fixed inset-4 z-[100] p-4 ${base}`;
+    }
+    if (fullScreenId && fullScreenId !== id) {
+      return "hidden";
+    }
+    return `p-3 w-full ${base}`;
+  };
+
+  const toggleFullScreen = (id) => {
+    setFullScreenId(prev => prev === id ? null : id);
+    setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -81,7 +98,7 @@ export default function TrajectoryCharts({ planPoints = [], actualPoints = [], i
   const layout3D = {
     title: { text: `3D Trajectory (${len})`, font: { color: textColor, size: 14 } },
     autosize: true,
-    height: 760,
+    height: fullScreenId === '3d' ? undefined : 500,
     margin: { l: 0, r: 0, b: 0, t: 30 },
     paper_bgcolor: bgColor,
     scene: {
@@ -112,6 +129,45 @@ export default function TrajectoryCharts({ planPoints = [], actualPoints = [], i
       },
     },
     legend: { x: 0, y: 1, font: { color: textColor } },
+    updatemenus: [
+      {
+        type: 'buttons',
+        showactive: false,
+        buttons: [
+          {
+            label: 'Zoom to Bottom',
+            method: 'relayout',
+            args: [
+              'scene.camera',
+              {
+                center: { x: 0, y: 0, z: -0.35 },
+                eye: { x: 0.6, y: 0.6, z: -0.2 }
+              }
+            ]
+          },
+          {
+            label: 'Reset',
+            method: 'relayout',
+            args: [
+              'scene.camera',
+              {
+                center: { x: 0, y: 0, z: 0 },
+                eye: { x: 1.25, y: 1.25, z: 1.25 }
+              }
+            ]
+          }
+        ],
+        direction: 'left',
+        pad: { r: 10, t: 10 },
+        x: 1,
+        xanchor: 'right',
+        y: 1.05,
+        yanchor: 'bottom',
+        bgcolor: isDark ? '#1e293b' : '#f1f5f9',
+        bordercolor: isDark ? '#334155' : '#cbd5e1',
+        font: { color: textColor, size: 10 }
+      }
+    ],
   };
 
   // 2. Prepare data for Plan View (Easting vs Northing)
@@ -142,7 +198,7 @@ export default function TrajectoryCharts({ planPoints = [], actualPoints = [], i
   const layoutPlanView = {
     title: { text: `Plan View (E vs N, ${len})`, font: { color: textColor, size: 14 } },
     autosize: true,
-    height: 380,
+    height: fullScreenId === 'plan' ? undefined : 500,
     margin: { l: 50, r: 20, b: 50, t: 40 },
     paper_bgcolor: bgColor,
     plot_bgcolor: bgColor,
@@ -192,7 +248,7 @@ export default function TrajectoryCharts({ planPoints = [], actualPoints = [], i
   const layoutVS = {
     title: { text: `Vertical Section (VS vs TVD, ${len})`, font: { color: textColor, size: 14 } },
     autosize: true,
-    height: 380,
+    height: fullScreenId === 'vs' ? undefined : 500,
     margin: { l: 50, r: 20, b: 50, t: 40 },
     paper_bgcolor: bgColor,
     plot_bgcolor: bgColor,
@@ -215,39 +271,56 @@ export default function TrajectoryCharts({ planPoints = [], actualPoints = [], i
   };
 
   return (
-    <div ref={containerRef} className="flex flex-col gap-4 w-full">
-      {/* 3D Plot (Full Width, sits above) */}
-      <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-md dark:border-slate-800 dark:bg-slate-900/60 dark:backdrop-blur-md w-full">
+    <div ref={containerRef} className="grid grid-cols-1 lg:grid-cols-3 gap-4 w-full">
+      {/* 3D Plot */}
+      <div 
+        className={getContainerClass('3d')}
+        onDoubleClickCapture={() => toggleFullScreen('3d')}
+        title="Double click to toggle fullscreen"
+      >
         <Plot
           data={data3D}
           layout={layout3D}
-          style={{ width: '100%', height: '100%' }}
+          style={{ width: '100%', height: '100%', flex: 1 }}
           config={{ responsive: true, displaylogo: false }}
         />
       </div>
 
-      {/* 2D Plots side-by-side (Plan View and Vertical Section View) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Plan View Plot */}
-        <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-md dark:border-slate-800 dark:bg-slate-900/60 dark:backdrop-blur-md">
-          <Plot
-            data={dataPlanView}
-            layout={layoutPlanView}
-            style={{ width: '100%', height: '100%' }}
-            config={{ responsive: true, displaylogo: false }}
-          />
-        </div>
-
-        {/* Vertical Section Plot */}
-        <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-md dark:border-slate-800 dark:bg-slate-900/60 dark:backdrop-blur-md">
-          <Plot
-            data={dataVS}
-            layout={layoutVS}
-            style={{ width: '100%', height: '100%' }}
-            config={{ responsive: true, displaylogo: false }}
-          />
-        </div>
+      {/* Plan View Plot */}
+      <div 
+        className={getContainerClass('plan')}
+        onDoubleClickCapture={() => toggleFullScreen('plan')}
+        title="Double click to toggle fullscreen"
+      >
+        <Plot
+          data={dataPlanView}
+          layout={layoutPlanView}
+          style={{ width: '100%', height: '100%', flex: 1 }}
+          config={{ responsive: true, displaylogo: false }}
+        />
       </div>
+
+      {/* Vertical Section Plot */}
+      <div 
+        className={getContainerClass('vs')}
+        onDoubleClickCapture={() => toggleFullScreen('vs')}
+        title="Double click to toggle fullscreen"
+      >
+        <Plot
+          data={dataVS}
+          layout={layoutVS}
+          style={{ width: '100%', height: '100%', flex: 1 }}
+          config={{ responsive: true, displaylogo: false }}
+        />
+      </div>
+
+      {/* Overlay backdrop when fullscreen */}
+      {fullScreenId && (
+        <div 
+          className="fixed inset-0 z-[90] bg-slate-900/80 backdrop-blur-sm cursor-pointer"
+          onClick={() => toggleFullScreen(fullScreenId)}
+        />
+      )}
     </div>
   );
 }

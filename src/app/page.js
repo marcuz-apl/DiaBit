@@ -652,39 +652,6 @@ export default function Home() {
                 <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-2xl shadow-sm space-y-3">
                   <div className="flex items-center justify-between">
                     <h3 className="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5 uppercase tracking-wider">
-                      {(activeNode && activeNode.type === 'trajectory') ? (
-                        <>
-                          <span className="text-blue-500 font-extrabold text-sm">✎</span>
-                          Active Plan: {activeNode.name}
-                        </>
-                      ) : (
-                        <>
-                          <span className="text-emerald-500 font-extrabold text-sm">★</span>
-                          Definitive Plan: {defPlan ? defPlan.name : "None"}
-                        </>
-                      )}
-                    </h3>
-                  </div>
-                  <ExcelGrid
-                    nodeId={(activeNode && activeNode.type === 'trajectory') ? activeNode.id : (defPlan?.id || null)}
-                    initialPoints={planPoints}
-                    unitSystem={units}
-                    vsDirection={vsDirection}
-                    tieIn={((activeNode && activeNode.type === 'trajectory') ? activeNode.metadata?.tie_in : defPlan?.metadata?.tie_in) || { md: 0, inc: 0, az: 0, tvd: 0, north: 0, east: 0 }}
-                    totalCorrection={0}
-                    onChange={(newPoints) => {
-                      setPlanPoints(newPoints);
-                    }}
-                    onSaveSuccess={(newPoints) => {
-                      setPlanPoints(newPoints);
-                      setRefreshTrigger(prev => prev + 1);
-                    }}
-                  />
-                </div>
-
-                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-2xl shadow-sm space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5 uppercase tracking-wider">
                       {(activeNode && activeNode.type === 'survey') ? (
                         <>
                           <span className="text-blue-500 font-extrabold text-sm">✎</span>
@@ -713,6 +680,42 @@ export default function Home() {
                       setRefreshTrigger(prev => prev + 1);
                     }}
                   />
+                </div>
+
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-2xl shadow-sm group">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5 uppercase tracking-wider">
+                      {(activeNode && activeNode.type === 'trajectory') ? (
+                        <>
+                          <span className="text-blue-500 font-extrabold text-sm">✎</span>
+                          Active Plan: {activeNode.name}
+                        </>
+                      ) : (
+                        <>
+                          <span className="text-emerald-500 font-extrabold text-sm">★</span>
+                          Definitive Plan: {defPlan ? defPlan.name : "None"}
+                        </>
+                      )}
+                    </h3>
+                    <span className="text-[10px] text-slate-400 font-medium group-hover:hidden">Hover to expand</span>
+                  </div>
+                  <div className="hidden group-hover:block mt-3">
+                    <ExcelGrid
+                      nodeId={(activeNode && activeNode.type === 'trajectory') ? activeNode.id : (defPlan?.id || null)}
+                      initialPoints={planPoints}
+                      unitSystem={units}
+                      vsDirection={vsDirection}
+                      tieIn={((activeNode && activeNode.type === 'trajectory') ? activeNode.metadata?.tie_in : defPlan?.metadata?.tie_in) || { md: 0, inc: 0, az: 0, tvd: 0, north: 0, east: 0 }}
+                      totalCorrection={0}
+                      onChange={(newPoints) => {
+                        setPlanPoints(newPoints);
+                      }}
+                      onSaveSuccess={(newPoints) => {
+                        setPlanPoints(newPoints);
+                        setRefreshTrigger(prev => prev + 1);
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
 
