@@ -22,9 +22,9 @@ export default function TrajectoryCharts({ planPoints = [], actualPoints = [], i
   const containerRef = useRef(null);
 
   const getContainerClass = (id) => {
-    const base = "rounded-xl border border-slate-200 bg-white shadow-md dark:border-slate-800 dark:bg-slate-900/60 dark:backdrop-blur-md flex flex-col transition-all duration-300";
+    const base = "rounded-xl border border-slate-200 bg-white shadow-md dark:border-slate-800 dark:bg-slate-900/60 dark:backdrop-blur-md flex flex-col transition-all duration-300 aspect-square";
     if (fullScreenId === id) {
-      return `fixed inset-4 z-[100] p-4 ${base}`;
+      return `fixed inset-0 m-auto z-[100] p-4 max-h-[90vh] max-w-[90vw] ${base}`;
     }
     if (fullScreenId && fullScreenId !== id) {
       return "hidden";
@@ -98,7 +98,6 @@ export default function TrajectoryCharts({ planPoints = [], actualPoints = [], i
   const layout3D = {
     title: { text: `3D Trajectory (${len})`, font: { color: textColor, size: 14 } },
     autosize: true,
-    height: fullScreenId === '3d' ? undefined : 500,
     margin: { l: 0, r: 0, b: 0, t: 30 },
     paper_bgcolor: bgColor,
     scene: {
@@ -198,7 +197,6 @@ export default function TrajectoryCharts({ planPoints = [], actualPoints = [], i
   const layoutPlanView = {
     title: { text: `Plan View (E vs N, ${len})`, font: { color: textColor, size: 14 } },
     autosize: true,
-    height: fullScreenId === 'plan' ? undefined : 500,
     margin: { l: 50, r: 20, b: 50, t: 40 },
     paper_bgcolor: bgColor,
     plot_bgcolor: bgColor,
@@ -248,7 +246,6 @@ export default function TrajectoryCharts({ planPoints = [], actualPoints = [], i
   const layoutVS = {
     title: { text: `Vertical Section (VS vs TVD, ${len})`, font: { color: textColor, size: 14 } },
     autosize: true,
-    height: fullScreenId === 'vs' ? undefined : 500,
     margin: { l: 50, r: 20, b: 50, t: 40 },
     paper_bgcolor: bgColor,
     plot_bgcolor: bgColor,
@@ -281,6 +278,7 @@ export default function TrajectoryCharts({ planPoints = [], actualPoints = [], i
         <Plot
           data={data3D}
           layout={layout3D}
+          useResizeHandler={true}
           style={{ width: '100%', height: '100%', flex: 1 }}
           config={{ responsive: true, displaylogo: false }}
         />
@@ -295,6 +293,7 @@ export default function TrajectoryCharts({ planPoints = [], actualPoints = [], i
         <Plot
           data={dataPlanView}
           layout={layoutPlanView}
+          useResizeHandler={true}
           style={{ width: '100%', height: '100%', flex: 1 }}
           config={{ responsive: true, displaylogo: false }}
         />
@@ -309,6 +308,7 @@ export default function TrajectoryCharts({ planPoints = [], actualPoints = [], i
         <Plot
           data={dataVS}
           layout={layoutVS}
+          useResizeHandler={true}
           style={{ width: '100%', height: '100%', flex: 1 }}
           config={{ responsive: true, displaylogo: false }}
         />
