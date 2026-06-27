@@ -200,9 +200,27 @@ Admin Panel → WMM Coefficients tab allows re-seeding when NOAA publishes a new
 | WMM n=1–6 offline | ±1–3° | Offline fallback, planning |
 | WMM n=1–12 offline | ±0.5° | Full offline (future upgrade) |
 
+## 5. Local Datum Shifts (towgs84 Override)
+
+### 5.1 The Need for Datum Shifts
+Standard UTM projections in DiaBit assume WGS84 for magnetic and gravity background calculations. However, many historical or regional CRS systems (e.g., ED50 in Libya or the North Sea) use different underlying reference ellipsoids.
+To accurately compute magnetic declination for a well using ED50, its coordinate must first be mathematically decoupled and shifted to WGS84 before hitting the WMM/IGRF models.
+
+### 5.2 Auto-Apply Logic
+DiaBit stores known regional shifts in the **`datum_shifts`** SQLite table (e.g., EPSG:23034 mapped to DX:-87, DY:-96, DZ:-120 for Libya).
+- When a user selects a CRS (like EPSG:23034), `RightSidebar.js` automatically queries `/api/datum-shifts`.
+- If a shift is found, the **"Local Datum Shift Override"** is automatically toggled ON, and the DX, DY, DZ parameters are pre-filled.
+- *Default Behavior:* This auto-apply logic only runs by default when creating a new well or if the well's `datum_override` metadata is strictly `undefined`, ensuring it never overwrites a user's explicitly saved parameters (even if they turned it OFF).
+
+### 5.3 Mathematical Application
+When the user enters a surface location (Easting/Northing) and the override is active, the `GET /api/geo` conversion route injects `+towgs84=DX,DY,DZ,0,0,0,0` directly into the `proj4` definition string before executing the coordinate transformation. 
+The API then returns two distinct pairs of coordinates:
+1. **Native Lat/Lon:** (Unshifted) displayed in the UI.
+2. **WGS84 Lat/Lon:** (Shifted) processed transparently in the background for magnetic and gravity engines.
+
 ---
 
-## 5. Admin Panel Reference Data Tabs
+## 6. Admin Panel Reference Data Tabs
 
 ### CRS Registry Tab
 - Searchable table of all `crs_registry` entries
@@ -219,9 +237,14 @@ Admin Panel → WMM Coefficients tab allows re-seeding when NOAA publishes a new
 - "Re-seed from JSON" button — paste or upload official NOAA WMM.COF format
 - Use when transitioning to WMM2030 (~2030)
 
+### Datum Shifts Tab
+- Manages the `datum_shifts` table for defining localized `towgs84` (DX, DY, DZ) overrides.
+- **Search CRS Registry:** Includes a dynamic search bar that queries the master `crs_registry`. Upon selecting a CRS (e.g., ED50), it automatically parses the hidden `+towgs84` parameters out of the projection string and pre-fills the Add Shift form.
+- Pre-loaded with 10 standard regional shifts (e.g., Libya, North Sea, Gulf of Mexico).
+
 ---
 
-## 6. Engineering Setup Procedure
+## 7. Engineering Setup Procedure
 
 When configuring a new well in DiaBit:
 

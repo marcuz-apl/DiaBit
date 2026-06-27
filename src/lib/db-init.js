@@ -144,7 +144,24 @@ export function initDb(db) {
         INSERT INTO datum_shifts (epsg_code, region_name, dx, dy, dz)
         VALUES (?, ?, ?, ?, ?)
       `);
-      insertDatumShift.run(23034, 'Libya (ED50)', -87, -96, -120);
+      const defaultShifts = [
+        { code: 23034, name: 'Libya (ED50 UTM 34N)', dx: -87, dy: -96, dz: -120 },
+        { code: 23031, name: 'North Sea (ED50 UTM 31N)', dx: -89.5, dy: -93.8, dz: -123.1 },
+        { code: 23032, name: 'North Sea (ED50 UTM 32N)', dx: -89.5, dy: -93.8, dz: -123.1 },
+        { code: 26714, name: 'Gulf of Mexico (NAD27 UTM 14N)', dx: -8, dy: 160, dz: 176 },
+        { code: 26715, name: 'Gulf of Mexico (NAD27 UTM 15N)', dx: -8, dy: 160, dz: 176 },
+        { code: 4230,  name: 'ED50 Geographic', dx: -87, dy: -98, dz: -121 },
+        { code: 4267,  name: 'NAD27 Geographic', dx: -8, dy: 160, dz: 176 },
+        { code: 2002,  name: 'Dominica 1945', dx: 725, dy: 685, dz: 536 },
+        { code: 4202,  name: 'Australian Geodetic 1966', dx: -119, dy: -50, dz: 227 },
+        { code: 4223,  name: 'Camacupa (Angola)', dx: -50.9, dy: -347.6, dz: -231 }
+      ];
+      const insertManyShifts = db.transaction((shifts) => {
+        for (const s of shifts) {
+          insertDatumShift.run(s.code, s.name, s.dx, s.dy, s.dz);
+        }
+      });
+      insertManyShifts(defaultShifts);
     } catch (e) {
       console.error("Failed to seed Datum Shifts:", e);
     }

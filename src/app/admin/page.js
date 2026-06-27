@@ -39,6 +39,8 @@ export default function AdminPage() {
   const [crsSearchQuery, setCrsSearchQuery] = useState('');
   const [modelsList, setModelsList] = useState([]);
   const [wmmList, setWmmList] = useState([]);
+  const [datumShiftsList, setDatumShiftsList] = useState([]);
+  const [newShift, setNewShift] = useState({ epsg_code: '', region_name: '', dx: 0, dy: 0, dz: 0 });
   const [isFetchingRefData, setIsFetchingRefData] = useState(false);
 
   // Load user and check role
@@ -105,10 +107,11 @@ export default function AdminPage() {
     const fetchRefData = async () => {
       setIsFetchingRefData(true);
       try {
-        if (activeTab === 'crs') {
+        if (activeTab === 'crs' || activeTab === 'datum-shifts') {
           const res = await fetch(`/api/crs${crsSearchQuery ? '?q=' + encodeURIComponent(crsSearchQuery) : ''}`);
           if (res.ok) setCrsList(await res.json());
-        } else if (activeTab === 'field-models' && modelsList.length === 0) {
+        }
+        if (activeTab === 'field-models' && modelsList.length === 0) {
           const res = await fetch('/api/models');
           if (res.ok) {
             const data = await res.json();
@@ -117,6 +120,9 @@ export default function AdminPage() {
         } else if (activeTab === 'wmm' && wmmList.length === 0) {
           const res = await fetch('/api/wmm');
           if (res.ok) setWmmList(await res.json());
+        } else if (activeTab === 'datum-shifts' && datumShiftsList.length === 0) {
+          const res = await fetch('/api/datum-shifts');
+          if (res.ok) setDatumShiftsList(await res.json());
         }
       } catch (e) {
         console.error("Failed to load reference data", e);
@@ -124,7 +130,7 @@ export default function AdminPage() {
         setIsFetchingRefData(false);
       }
     };
-    if (activeTab === 'crs' || activeTab === 'field-models' || activeTab === 'wmm') {
+    if (activeTab === 'crs' || activeTab === 'field-models' || activeTab === 'wmm' || activeTab === 'datum-shifts') {
       fetchRefData();
     }
   }, [activeTab, isAdmin, crsSearchQuery]);
@@ -246,10 +252,60 @@ export default function AdminPage() {
 
       setMessages(messages.filter(m => m.id !== id));
       alert("Message deleted successfully.");
-    } catch (err) {
-      alert(err.message);
+    } catch (e) {
+      console.error(e);
     }
+  };
 
+  const handleAddDatumShift = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await fetch('/api/datum-shifts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newShift)
+      });
+      if (res.ok) {
+        const added = await res.json();
+        setDatumShiftsList([...datumShiftsList, added]);
+        setNewShift({ epsg_code: '', region_name: '', dx: 0, dy: 0, dz: 0 });
+        setCrsSearchQuery('');
+      } else {
+        const err = await res.json();
+        alert(err.error || "Failed to add shift");
+      }
+    } catch (e) {
+      console.error("Add shift error:", e);
+    }
+  };
+
+  const handleCrsSearchSelect = (crsName) => {
+    setCrsSearchQuery(crsName);
+    const selected = crsList.find(c => c.name === crsName);
+    if (selected) {
+      const shift = { epsg_code: selected.epsg_code, region_name: selected.name, dx: 0, dy: 0, dz: 0 };
+      if (selected.proj4) {
+        const match = selected.proj4.match(/\+towgs84=([^,\s]+),([^,\s]+),([^,\s]+)/);
+        if (match) {
+          shift.dx = parseFloat(match[1]);
+          shift.dy = parseFloat(match[2]);
+          shift.dz = parseFloat(match[3]);
+        }
+      }
+      setNewShift(shift);
+    }
+  };
+
+  const handleDeleteDatumShift = async (id) => {
+    if (!confirm("Delete this datum shift?")) return;
+    try {
+      const res = await fetch(`/api/datum-shifts?id=${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        setDatumShiftsList(datumShiftsList.filter(s => s.id !== id));
+      }
+    } catch (e) {
+      console.error("Delete shift error:", e);
+    }
   };
 
   if (!isAdmin) {
@@ -335,6 +391,9 @@ export default function AdminPage() {
           </button>
           <button onClick={() => setActiveTab('wmm')} className={`w-full flex items-center gap-2 px-3 py-2 rounded text-xs font-medium transition ${activeTab === 'wmm' ? 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50'}`}>
             <Sliders className="h-4 w-4" /> WMM Coefficients
+          </button>
+          <button onClick={() => setActiveTab('datum-shifts')} className={`w-full flex items-center gap-2 px-3 py-2 rounded text-xs font-medium transition ${activeTab === 'datum-shifts' ? 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50'}`}>
+            <Map className="h-4 w-4" /> Datum Shifts
           </button>
           <div className="pt-4 pb-1">
             <span className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">System</span>
@@ -697,6 +756,101 @@ export default function AdminPage() {
               </div>
             </div>
           </div>
+          {/* Datum Shifts Tab */}
+          <div className={activeTab === 'datum-shifts' ? 'block' : 'hidden'}>
+            <div className="max-w-6xl mx-auto rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/60">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                  <Map className="h-4.5 w-4.5 text-blue-500" />
+                  Local Datum Shifts Override
+                </h2>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mb-5 leading-relaxed max-w-4xl">
+                Manage DX, DY, DZ override parameters for specific EPSG coordinate reference systems. 
+                When a well uses a CRS defined here, these localized datum shifts to WGS84 will be applied by default.
+              </p>
+              
+              <div className="mb-6 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg border border-slate-200 dark:border-slate-700">
+                <h3 className="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-2">Search CRS Registry for Default Shifts</h3>
+                <div className="relative max-w-md">
+                  <input 
+                    type="text" 
+                    value={crsSearchQuery} 
+                    onChange={e => handleCrsSearchSelect(e.target.value)} 
+                    placeholder="Search CRS (e.g. ED50) to auto-fill..." 
+                    className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-md px-3 py-2 text-xs text-slate-800 dark:text-slate-200 outline-none focus:border-blue-500"
+                    list="shift-crs-options"
+                  />
+                  <datalist id="shift-crs-options">
+                    {crsList.map(c => <option key={c.epsg_code} value={c.name} />)}
+                  </datalist>
+                </div>
+              </div>
+
+              <form onSubmit={handleAddDatumShift} className="flex gap-2 mb-6 items-end">
+                <div className="flex-1">
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">EPSG Code</label>
+                  <input type="number" required value={newShift.epsg_code} onChange={e => setNewShift({...newShift, epsg_code: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded px-3 py-1.5 text-xs text-slate-800 dark:text-slate-200 outline-none focus:border-blue-500" placeholder="e.g. 23034" />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Region Name</label>
+                  <input type="text" required value={newShift.region_name} onChange={e => setNewShift({...newShift, region_name: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded px-3 py-1.5 text-xs text-slate-800 dark:text-slate-200 outline-none focus:border-blue-500" placeholder="e.g. Libya (ED50)" />
+                </div>
+                <div className="w-24">
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">DX (m)</label>
+                  <input type="number" step="any" required value={newShift.dx} onChange={e => setNewShift({...newShift, dx: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded px-3 py-1.5 text-xs text-slate-800 dark:text-slate-200 outline-none focus:border-blue-500" placeholder="0" />
+                </div>
+                <div className="w-24">
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">DY (m)</label>
+                  <input type="number" step="any" required value={newShift.dy} onChange={e => setNewShift({...newShift, dy: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded px-3 py-1.5 text-xs text-slate-800 dark:text-slate-200 outline-none focus:border-blue-500" placeholder="0" />
+                </div>
+                <div className="w-24">
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">DZ (m)</label>
+                  <input type="number" step="any" required value={newShift.dz} onChange={e => setNewShift({...newShift, dz: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded px-3 py-1.5 text-xs text-slate-800 dark:text-slate-200 outline-none focus:border-blue-500" placeholder="0" />
+                </div>
+                <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded text-xs font-medium transition h-[30px]">
+                  Add Shift
+                </button>
+              </form>
+
+              <div className="overflow-x-auto rounded border border-slate-200 dark:border-slate-800">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
+                      <th className="px-4 py-3 font-medium">EPSG Code</th>
+                      <th className="px-4 py-3 font-medium">Region Name</th>
+                      <th className="px-4 py-3 font-medium">DX (m)</th>
+                      <th className="px-4 py-3 font-medium">DY (m)</th>
+                      <th className="px-4 py-3 font-medium">DZ (m)</th>
+                      <th className="px-4 py-3 font-medium text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {datumShiftsList.map(s => (
+                      <tr key={s.id} className="border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/30">
+                        <td className="px-4 py-3 font-mono font-medium text-blue-600 dark:text-blue-400">{s.epsg_code}</td>
+                        <td className="px-4 py-3 font-medium text-slate-800 dark:text-slate-200">{s.region_name}</td>
+                        <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{s.dx}</td>
+                        <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{s.dy}</td>
+                        <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{s.dz}</td>
+                        <td className="px-4 py-3 text-right">
+                          <button onClick={() => handleDeleteDatumShift(s.id)} className="text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 p-1.5 rounded transition">
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                    {datumShiftsList.length === 0 && (
+                      <tr>
+                        <td colSpan="6" className="px-4 py-8 text-center text-slate-400">No custom datum shifts configured.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
           {/* Configuration Tab */}
           <div className={activeTab === 'config' ? 'block' : 'hidden'}>
             <div className="max-w-md mx-auto">

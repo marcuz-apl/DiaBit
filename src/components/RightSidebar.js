@@ -120,10 +120,13 @@ export default function RightSidebar({
   useEffect(() => {
     if (!selectedCrsObj || !selectedCrsObj.epsg_code) return;
     
-    // Prevent overwriting user's saved values on initial node load
+    // Prevent overwriting user's saved values on initial node load,
+    // UNLESS the user has never explicitly saved the datum_override (it's undefined).
     if (!hasLoadedInitialCrs.current) {
       hasLoadedInitialCrs.current = true;
-      return;
+      if (wellNode && wellNode.metadata && wellNode.metadata.datum_override !== undefined) {
+        return;
+      }
     }
 
     let cancelled = false;
