@@ -30,6 +30,11 @@ export default function AdminPage() {
   // Messages list state
   const [messages, setMessages] = useState([]);
 
+  // Reference Data state
+  const [crsList, setCrsList] = useState([]);
+  const [modelsList, setModelsList] = useState([]);
+  const [isFetchingRefData, setIsFetchingRefData] = useState(false);
+
   // Load user and check role
   useEffect(() => {
     const savedUser = localStorage.getItem('user');
@@ -86,6 +91,30 @@ export default function AdminPage() {
 
     fetchAdminData();
   }, [isAdmin]);
+
+  // Fetch Reference Data on demand
+  useEffect(() => {
+    if (!isAdmin) return;
+    const fetchRefData = async () => {
+      setIsFetchingRefData(true);
+      try {
+        if (activeTab === 'crs' && crsList.length === 0) {
+          const res = await fetch('/api/crs');
+          if (res.ok) setCrsList(await res.json());
+        } else if (activeTab === 'field-models' && modelsList.length === 0) {
+          const res = await fetch('/api/models');
+          if (res.ok) setModelsList(await res.json());
+        }
+      } catch (e) {
+        console.error("Failed to load reference data", e);
+      } finally {
+        setIsFetchingRefData(false);
+      }
+    };
+    if (activeTab === 'crs' || activeTab === 'field-models') {
+      fetchRefData();
+    }
+  }, [activeTab, isAdmin]);
 
   const handleCreateUser = async (e) => {
     e.preventDefault();
@@ -517,6 +546,104 @@ export default function AdminPage() {
             </div>
           </div>
 
+          {/* CRS Registry Tab */}
+          <div className={activeTab === 'crs' ? 'block' : 'hidden'}>
+            <div className="max-w-6xl mx-auto rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/60">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                  <Map className="h-4.5 w-4.5 text-blue-500" />
+                  Coordinate Reference Systems
+                </h2>
+                <span className="text-[10px] bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400 px-2 py-0.5 rounded font-semibold border border-blue-200 dark:border-blue-800/50">
+                  {crsList.length} Zones Pre-Loaded
+                </span>
+              </div>
+              <div className="overflow-x-auto max-h-[500px]">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-900">
+                    <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-450 dark:text-slate-550 font-bold">
+                      <th className="py-2 px-3">EPSG</th>
+                      <th className="py-2 px-3">Name</th>
+                      <th className="py-2 px-3">Proj</th>
+                      <th className="py-2 px-3">Meridian</th>
+                      <th className="py-2 px-3 text-center">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                    {crsList.map(c => (
+                      <tr key={c.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/20">
+                        <td className="py-2.5 px-3 text-slate-400 font-mono whitespace-nowrap">{c.epsg_code}</td>
+                        <td className="py-2.5 px-3 font-semibold whitespace-nowrap">{c.name}</td>
+                        <td className="py-2.5 px-3 uppercase text-[10px] font-bold text-slate-500">{c.projection}</td>
+                        <td className="py-2.5 px-3 font-mono">{c.central_meridian}</td>
+                        <td className="py-2.5 px-3 text-center">
+                          <span className={`px-2 py-0.5 rounded text-[9px] uppercase font-bold ${c.active ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200/50' : 'bg-slate-100 text-slate-500'}`}>
+                            {c.active ? 'Active' : 'Disabled'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          {/* Field Models Tab */}
+          <div className={activeTab === 'field-models' ? 'block' : 'hidden'}>
+            <div className="max-w-6xl mx-auto rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/60">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                  <Compass className="h-4.5 w-4.5 text-blue-500" />
+                  Magnetic & Gravity Models
+                </h2>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-450 dark:text-slate-550 font-bold bg-slate-50/50 dark:bg-slate-900/50">
+                      <th className="py-2 px-3">Type</th>
+                      <th className="py-2 px-3">Model Name</th>
+                      <th className="py-2 px-3">Year</th>
+                      <th className="py-2 px-3">Provider</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                    {modelsList.map(m => (
+                      <tr key={m.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/20">
+                        <td className="py-2.5 px-3">
+                          <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold ${m.model_type === 'magnetic' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400'}`}>
+                            {m.model_type}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3 font-semibold">{m.name}</td>
+                        <td className="py-2.5 px-3 text-slate-500">{m.year}</td>
+                        <td className="py-2.5 px-3 text-slate-500">{m.provider}</td>
+                      </tr>
+                    ))}
+                    {modelsList.length === 0 && (
+                      <tr>
+                        <td colSpan="4" className="py-6 text-center text-slate-400 italic">No field models configured.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          {/* WMM Coefficients Tab */}
+          <div className={activeTab === 'wmm' ? 'block' : 'hidden'}>
+            <div className="max-w-6xl mx-auto rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/60">
+              <h2 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-3 flex items-center gap-1.5">
+                <Sliders className="h-4.5 w-4.5 text-blue-500" />
+                WMM Offline Coefficients
+              </h2>
+              <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/50 rounded text-xs text-blue-800 dark:text-blue-300 leading-relaxed mb-4">
+                <strong>Offline Calculation Engine Active.</strong> The WMM2025 magnetic model coefficients are loaded into the database. These are used as a fallback to calculate Magnetic Declination and Total Field automatically when an internet connection to the NOAA API is unavailable. 
+              </div>
+            </div>
+          </div>
           {/* Configuration Tab */}
           <div className={activeTab === 'config' ? 'block' : 'hidden'}>
             <div className="max-w-md mx-auto">
