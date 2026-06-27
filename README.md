@@ -68,3 +68,22 @@ To launch DiaBit in isolated containers:
 docker-compose up --build -d
 ```
 The application will run on port `3030` (`http://localhost:3030`). Database data is persisted inside the container's `./data/` folder mapped to host storage.
+
+### Docker Hub & Synology NAS Deployment
+DiaBit is perfectly suited for self-hosted NAS environments. To deploy your own custom image to a Synology NAS:
+
+1. **Build & Push to Docker Hub:**
+   ```bash
+   docker login
+   docker build -t <your-dockerhub-username>/diabit:latest .
+   docker push <your-dockerhub-username>/diabit:latest
+   ```
+
+2. **Synology Container Manager Setup:**
+   - **Image**: Search the registry for `<your-dockerhub-username>/diabit` and download the `latest` tag.
+   - **Port Settings**: Map the container port `3030` to an available local port (e.g., Local `3030` ➔ Container `3030`).
+   - **Volume Settings (Crucial)**: To ensure you do not lose your database on restart, create a folder in your Synology File Station (e.g., `docker/diabit/data`). Map it as follows:
+     - **File/Folder**: `docker/diabit/data`
+     - **Mount path**: `/app/data`
+
+*Note: Since the native database dependencies (like `better-sqlite3`) compile during the docker build phase, the resulting image is entirely self-contained and ready for deployment.*
