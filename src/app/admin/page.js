@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, UserPlus, Users, Trash2, ShieldAlert, Database, Check, Mail } from 'lucide-react';
+import { ArrowLeft, UserPlus, Users, Trash2, ShieldAlert, Database, Check, Mail, Map, Compass, Sliders, Menu } from 'lucide-react';
 
 export default function AdminPage() {
   const [isAdmin, setIsAdmin] = useState(false);
@@ -326,48 +326,21 @@ export default function AdminPage() {
             Admin: {currentUser?.username}
           </div>
         </header>
-
         <main className="flex-1 overflow-y-auto p-6">
           {activeTab === 'dashboard' && renderDashboard()}
-          {/* We will map the other tabs down here */}
-
-      {/* Admin Dashboard Area */}
-      <main className="max-w-6xl mx-auto px-6 py-8 space-y-6">
-        
-        {/* Row 1: System Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/60 flex items-center gap-3">
-            <Users className="h-10 w-10 text-blue-500" />
-            <div>
-              <div className="text-[10px] text-slate-450 dark:text-slate-500 uppercase tracking-wider font-bold">Total Accounts</div>
-              <div className="text-xl font-black">{users.length}</div>
-            </div>
-          </div>
-
-          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/60 flex items-center gap-3">
-            <Database className="h-10 w-10 text-emerald-500" />
-            <div>
-              <div className="text-[10px] text-slate-455 dark:text-slate-500 uppercase tracking-wider font-bold">Hierarchy Nodes</div>
-              <div className="text-xl font-black">{nodes.length}</div>
-            </div>
-          </div>
-
-          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/60 flex items-center gap-3">
-            <ShieldAlert className="h-10 w-10 text-amber-500" />
-            <div>
-              <div className="text-[10px] text-slate-455 dark:text-slate-500 uppercase tracking-wider font-bold">Database Status</div>
-              <div className="text-xs font-semibold text-emerald-500 flex items-center gap-1 mt-1">
-                <Check className="h-4.5 w-4.5" /> Connected
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Row 2: User Management & Create User Form */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           
-          {/* User List Table */}
-          <div className="lg:col-span-2 rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/60 flex flex-col">
+          <div className={activeTab === 'dashboard' ? 'block' : 'hidden'}>
+            <div className="space-y-6 max-w-6xl mx-auto text-slate-500 italic p-8 text-center bg-slate-100/50 rounded border border-slate-200">
+              Additional dashboard analytics will appear here. Select a tab from the left sidebar to manage data.
+            </div>
+          </div>
+
+          {/* User Management Tab */}
+          <div className={activeTab === 'users' ? 'block' : 'hidden'}>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
+              
+              {/* User List Table */}
+              <div className="lg:col-span-2 rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/60 flex flex-col">
             <h2 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-3 flex items-center gap-1.5">
               <Users className="h-4.5 w-4.5 text-blue-500" />
               Manage User Profiles
@@ -490,13 +463,15 @@ export default function AdminPage() {
               </button>
             </form>
           </div>
-        </div>
+          </div>
+          </div>
 
-        {/* Row 3: Node Hierarchy & System Settings */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          
-          {/* Node Registry */}
-          <div className="lg:col-span-2 rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/60">
+          {/* Node Registry Tab */}
+          <div className={activeTab === 'nodes' ? 'block' : 'hidden'}>
+            <div className="max-w-6xl mx-auto">
+              
+              {/* Node Registry */}
+              <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/60">
             <h2 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-3 flex items-center gap-1.5">
               <Database className="h-4.5 w-4.5 text-emerald-500" />
               Hierarchy Node Registry Management
@@ -539,9 +514,14 @@ export default function AdminPage() {
               </table>
             </div>
           </div>
+            </div>
+          </div>
 
-          {/* System Configuration */}
-          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/60 flex flex-col">
+          {/* Configuration Tab */}
+          <div className={activeTab === 'config' ? 'block' : 'hidden'}>
+            <div className="max-w-md mx-auto">
+              {/* System Configuration */}
+              <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/60 flex flex-col">
             <h2 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-3 flex items-center gap-1.5">
               <ShieldAlert className="h-4.5 w-4.5 text-blue-500" />
               System Configuration
@@ -590,11 +570,13 @@ export default function AdminPage() {
                 )}
               </button>
             </form>
+              </div>
+            </div>
           </div>
-        </div>
 
-        {/* Row 4: Received Support & Contact Messages */}
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/60">
+          {/* Messages Tab */}
+          <div className={activeTab === 'messages' ? 'block' : 'hidden'}>
+            <div className="max-w-6xl mx-auto rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/60">
           <h2 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-3 flex items-center gap-1.5">
             <Mail className="h-4.5 w-4.5 text-blue-500" />
             Received Contact Messages
@@ -648,7 +630,10 @@ export default function AdminPage() {
           )}
         </div>
 
-      </main>
+            </div>
+
+        </main>
+      </div>
     </div>
   );
 }
