@@ -9,9 +9,13 @@ export async function GET(request) {
     const rowFmt = db.prepare("SELECT value FROM settings WHERE key = 'lat_lon_format'").get();
     const format = rowFmt ? rowFmt.value : 'decimal';
 
+    const rowApiKey = db.prepare("SELECT value FROM settings WHERE key = 'noaa_api_key'").get();
+    const apiKey = rowApiKey ? rowApiKey.value : '';
+
     return new Response(JSON.stringify({ 
       auto_save_interval: interval,
-      lat_lon_format: format
+      lat_lon_format: format,
+      noaa_api_key: apiKey
     }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }
@@ -27,7 +31,7 @@ export async function GET(request) {
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { auto_save_interval, lat_lon_format } = body;
+    const { auto_save_interval, lat_lon_format, noaa_api_key } = body;
     
     let interval = 3;
     if (auto_save_interval !== undefined) {
@@ -55,9 +59,18 @@ export async function POST(request) {
       `).run(format);
     }
 
+    if (noaa_api_key !== undefined) {
+      db.prepare(`
+        INSERT INTO settings (key, value)
+        VALUES ('noaa_api_key', ?)
+        ON CONFLICT(key) DO UPDATE SET value = excluded.value
+      `).run(noaa_api_key);
+    }
+
     return new Response(JSON.stringify({ 
       auto_save_interval: interval,
-      lat_lon_format: format
+      lat_lon_format: format,
+      noaa_api_key: noaa_api_key || ''
     }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }

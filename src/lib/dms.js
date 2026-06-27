@@ -5,7 +5,7 @@ export function decimalToDms(dec, isLat) {
   const d = Math.floor(absDec);
   const minFloat = (absDec - d) * 60;
   const m = Math.floor(minFloat);
-  const s = ((minFloat - m) * 60).toFixed(2);
+  const s = ((minFloat - m) * 60).toFixed(4);
   return `${d}° ${m}' ${s}" ${dir}`;
 }
 

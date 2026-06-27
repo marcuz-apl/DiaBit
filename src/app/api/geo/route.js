@@ -131,9 +131,9 @@ function computeMagnetic(latDeg, lonDeg, altKm, decimalYear) {
       const cosML = Math.cos(m * lambda);
       const sinML = Math.sin(m * lambda);
 
-      Br     -= (n + 1) * factor * (g * cosML + h * sinML) * p;
-      Btheta -= factor * (g * cosML + h * sinML) * (P[`${n}_${m+1}`] || 0) * Math.sqrt((n - m) * (n + m + 1) || 1);
-      Bphi   += factor * m * (-g * sinML + h * cosML) * p;
+      Br     += (n + 1) * factor * (g * cosML + h * sinML) * p;
+      Btheta += factor * (g * cosML + h * sinML) * (P[`${n}_${m+1}`] || 0) * Math.sqrt((n - m) * (n + m + 1) || 1);
+      Bphi   -= factor * m * (-g * sinML + h * cosML) * p;
     }
   }
 
@@ -238,8 +238,11 @@ export async function GET(request) {
 
       // Try NOAA NGDC API first
       try {
+        const settingsRow = db.prepare('SELECT noaa_api_key FROM settings LIMIT 1').get() || {};
+        const apiKey = settingsRow.noaa_api_key || 'zNh1J'; // fallback to old key if empty
+
         const altKm = alt / 1000;
-        const noaaUrl = `https://www.ngdc.noaa.gov/geomag-web/calculators/calculateIgrfwmm?lat=${lat}&lon=${lon}&elevation=${altKm}&elevationUnits=K&startYear=${year}&startMonth=${d.getMonth()+1}&startDay=${d.getDate()}&endYear=${year}&endMonth=${d.getMonth()+1}&endDay=${d.getDate()}&magneticComponent=d,i,f&key=zNh1J&resultFormat=json`;
+        const noaaUrl = `https://www.ngdc.noaa.gov/geomag-web/calculators/calculateIgrfwmm?lat=${lat}&lon=${lon}&elevation=${altKm}&elevationUnits=K&startYear=${year}&startMonth=${d.getMonth()+1}&startDay=${d.getDate()}&endYear=${year}&endMonth=${d.getMonth()+1}&endDay=${d.getDate()}&magneticComponent=d,i,f&key=${apiKey}&resultFormat=json`;
 
         const noaaRes = await fetch(noaaUrl, { signal: AbortSignal.timeout(4000) });
         if (noaaRes.ok) {

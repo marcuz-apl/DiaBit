@@ -151,9 +151,16 @@ Parameters: `lat`, `lon`, `elevation` (km), `startYear/Month/Day`, `magneticComp
 3. Click **"Fetch from Coordinates"**
 4. API proxies to NOAA → **auto-saves** D, I, F to well metadata and triggers recalculation
 
-### 4.3 Tier 2: WMM2025 Offline Computation (Fallback)
+### 4.3 Acquiring a NOAA API Key for HDGM / WMM
+To use the online NOAA API, you must register for a free API key. Without a key, DiaBit will fall back to the offline WMM calculator.
+1. Visit the NOAA National Centers for Environmental Information (NCEI) Magnetic Calculator page: `https://www.ngdc.noaa.gov/geomag/calculators/magcalc.shtml`
+2. Navigate to the **Web Services** or **API** section.
+3. Follow the prompts to register your email and receive a unique API Key.
+4. Enter this key into the **Configuration** tab in the DiaBit Admin Panel.
 
-If NOAA is unreachable (4 s timeout), falls back to local spherical harmonic evaluation using WMM2025 Gauss coefficients in the `wmm_coefficients` SQLite table.
+### 4.4 Tier 2: WMM2025 Offline Computation (Fallback)
+
+If NOAA is unreachable (4 s timeout) or the API key is missing/invalid, falls back to local spherical harmonic evaluation using WMM2025 Gauss coefficients in the `wmm_coefficients` SQLite table.
 
 **Magnetic scalar potential:**
 
@@ -172,8 +179,7 @@ where gₙᵐ(t) = gₙᵐ + ġₙᵐ × (t − t₀) (secular variation update)
     D = arctan(By / Bx)       (declination, degrees)
     I = arctan(Bz / H)        (dip angle, degrees)
 
-### 4.4 WMM Coefficient Table Schema
-
+### 4.5 WMM Coefficient Table Schema
 ```sql
 CREATE TABLE IF NOT EXISTS wmm_coefficients (
   id      INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -192,7 +198,7 @@ Admin Panel → WMM Coefficients tab allows re-seeding when NOAA publishes a new
 
 **WMM epochs:** WMM2020 (2020–2025), **WMM2025 (2025–2030 — current)**, WMM2030 (future).
 
-### 4.5 Accuracy Comparison
+### 4.6 Accuracy Comparison
 
 | Method | Declination accuracy | Use case |
 |---|---|---|

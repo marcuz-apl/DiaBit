@@ -372,8 +372,8 @@ export default function RightSidebar({
         setSaveMessage(`Magnetic parameters fetched from ${data.source}`);
         setSaveError(false);
         setTimeout(() => setSaveMessage(null), 3000);
-        // Auto-save the fetched values immediately
-        setTimeout(handleSaveSettings, 500);
+        // Auto-save the fetched values immediately, passing them to avoid stale state closure
+        setTimeout(() => handleSaveSettings(data), 500);
       } else {
         throw new Error("API returned an error");
       }
@@ -437,7 +437,7 @@ export default function RightSidebar({
 
 
 
-  const handleSaveSettings = async () => {
+  const handleSaveSettings = async (overrides = {}) => {
     if (!wellNode || !activeNode) return;
     setIsSaving(true);
 
@@ -460,11 +460,11 @@ export default function RightSidebar({
         datum,
         ref_elevation: parseFloat(refElevation) || 0,
         gl_elevation: parseFloat(glElevation) || 0,
-        declination: parseFloat(declination) || 0,
+        declination: overrides.declination !== undefined ? overrides.declination : (parseFloat(declination) || 0),
         gravity_field: parseFloat(gravityField) || 980.665,
         gravity_model: gravityModel,
-        magnetic_field: parseFloat(magneticField) || 50000,
-        magnetic_dip: parseFloat(magneticDip) || 60,
+        magnetic_field: overrides.total_field !== undefined ? overrides.total_field : (parseFloat(magneticField) || 50000),
+        magnetic_dip: overrides.dip !== undefined ? overrides.dip : (parseFloat(magneticDip) || 60),
         declination_date: declinationDate,
         magnetic_model: magneticModel,
         north_reference: northReference,

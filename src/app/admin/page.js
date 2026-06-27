@@ -28,6 +28,7 @@ export default function AdminPage() {
   // Settings state variables
   const [autoSaveInterval, setAutoSaveInterval] = useState(3);
   const [latLonFormat, setLatLonFormat] = useState('decimal');
+  const [noaaApiKey, setNoaaApiKey] = useState('');
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [settingsMsg, setSettingsMsg] = useState({ text: '', isError: false });
 
@@ -85,6 +86,7 @@ export default function AdminPage() {
           const sData = await settingsRes.json();
           setAutoSaveInterval(sData.auto_save_interval || 3);
           setLatLonFormat(sData.lat_lon_format || 'decimal');
+          setNoaaApiKey(sData.noaa_api_key || '');
         }
 
         // Fetch contact messages
@@ -220,7 +222,8 @@ export default function AdminPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           auto_save_interval: autoSaveInterval,
-          lat_lon_format: latLonFormat
+          lat_lon_format: latLonFormat,
+          noaa_api_key: noaaApiKey
         })
       });
 
@@ -905,6 +908,22 @@ export default function AdminPage() {
                   </select>
                   <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 leading-relaxed">
                     Choose how coordinates are formatted in the Calculation Settings panel.
+                  </p>
+                </div>
+
+                <div className="pt-2">
+                  <label className="block text-[10px] text-slate-400 uppercase tracking-wider mb-1">
+                    NOAA Geomagnetism API Key
+                  </label>
+                  <input
+                    type="text"
+                    value={noaaApiKey}
+                    onChange={(e) => setNoaaApiKey(e.target.value)}
+                    placeholder="e.g. zNh1J (Optional)"
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-2.5 py-1.5 text-xs focus:border-blue-500 outline-none text-slate-800 dark:text-slate-100"
+                  />
+                  <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 leading-relaxed">
+                    Leave blank to use the offline low-resolution WMM fallback. Used for High Definition Geomagnetic Models.
                   </p>
                 </div>
               </div>
